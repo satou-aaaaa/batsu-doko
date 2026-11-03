@@ -315,6 +315,77 @@ if (browser) try {
     await p.close();
   }
 
+  // 5c. やり込み：上級・メダル・広告図鑑・記録
+  {
+    const p = await open({ unlock: false });
+    const shape = await p.evaluate(() => {
+      const names = Object.values(TYPES).map((t) => t.name);
+      let bad = [];
+      for (const a of ARTICLES) { const h = hardOf(a); MODE = { kind: "article", hard: true }; A = a;
+        for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(h); if (o.length !== a.ads || new Set(o).size !== o.length || o.some((t) => TYPES[t].lv < 2) || o.filter((t) => TYPES[t].lv === 3).length < 2) { bad.push(a.id + ":" + o.join()); break; } } }
+      MODE = { kind: "article" };
+      return { names: names.length === 16 && new Set(names).size === 16 && names.every(Boolean), bad, gold: ARTICLES.every((a) => a.gold > 0 && a.goldH > a.gold) };
+    });
+    check("広告の16種類それぞれに、図鑑に出す名前がある（重ならない）", shape.names);
+    check("上級の広告の組み合わせを記事ごとに500回作って、どれも同じ枚数・重なりなし・★2以上だけ・★3が2枚以上", shape.bad.length === 0, shape.bad.join(" / "));
+    check("どの記事にも金メダルの目安タイムがあり、上級のほうが長い", shape.gold);
+    const gapsH = [];
+    for (let i = 0; i < 3; i++) for (let r = 0; r < 20; r++) gapsH.push(await p.evaluate((i) => { A = ARTICLES[i]; MODE = { kind: "article", hard: true }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
+      const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top); if (p2) p2.hidden = true; MODE = { kind: "article" };
+      return { i, min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length, want: hardOf(A).ads - (A.vignette ? 1 : 0) }; }, i));
+    const tightH = gapsH.filter((g) => g.min < H * 0.75 || g.n !== g.want);
+    check("上級でも、関所を20回置き直して広告の間はいつも0.75画面以上・数がそろう", tightH.length === 0, tightH.map((g) => `記事${g.i + 1}:${Math.round(g.min)}px n=${g.n}/${g.want}`).join(","));
+    // 解放：ふつうで読み切った記事だけ上級が開く
+    await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-best-recipe", "25.0"); menu(); });
+    check("上級は、ふつうで読み切った記事だけ開く", !(await p.isDisabled('.lv[data-h="0"]')) && (await p.isDisabled('.lv[data-h="1"]')) && (await p.isDisabled('.lv[data-h="2"]')));
+    // メダル
+    const md = await p.evaluate(() => { const a = ARTICLES[0]; return [medal(a.gold, a, false), medal(a.gold * 1.4, a, false), medal(a.gold * 1.4 + 0.1, a, false), medal(a.goldH, a, true), medal(0, a, false), nextMedal(a.gold + 1, a, false), nextMedal(a.gold * 2, a, false)]; });
+    check("メダル：金は目安以内・銀は1.4倍以内・それより遅ければ銅、上級は上級の目安で決まる", md.slice(0, 5).join() === "🥇,🥈,🥉,🥇,", md.join());
+    check("メダルの次の目標（金まで・銀まで あと何秒）が出る", md[5] === "金まで あと 1.0秒" && md[6].startsWith("銀まで あと"), md.slice(5).join(" / "));
+    check("メニューの記事に、ベストのメダルが出る", (await p.textContent('.lv[data-i="0"]')).includes("🥈"), await p.textContent('.lv[data-i="0"]'));
+    // 上級を通しで遊ぶ（いちばん難しい記事）：ヒントのボタンは出ない・記録は別に残る
+    await p.evaluate(() => { ARTICLES.forEach((a) => localStorage.setItem("xdoko-best-" + a.id, "99.0")); menu(); });
+    await p.click('.lv[data-h="2"]');
+    const card = await p.textContent("#stage .card");
+    check("上級の始めのカードに「上級」と広告の枚数・ヒントなしが出る", card.includes("記事3 上級") && card.includes("広告は7枚") && card.includes("ヒントは使えない"), card);
+    await p.click("#go");
+    let hintSeen = false, okH = true;
+    try {
+      for (let k = 0; k < 3000; k++) {
+        if (await p.isVisible("#stage .card")) break;
+        if (await p.isVisible("#virus")) throw new Error("上級でゲームオーバー");
+        if (await adOpen(p)) { if (await p.isVisible("#hintBtn")) hintSeen = true; await solve(p); await p.waitForTimeout(60); continue; }
+        const turn = await p.evaluate(() => { const nb = document.querySelector("#nextBtn"); return !!nb && !nb.hidden && document.querySelector("#stage").hidden && nb.getBoundingClientRect().top < innerHeight - 120; });
+        if (turn) await p.evaluate(() => document.querySelector("#nextBtn").click());
+        await scroll(p); await p.waitForTimeout(15);
+      }
+      if (!(await p.textContent("#stage")).includes("読み切った")) throw new Error("上級でゴールしない");
+    } catch (e) { okH = false; }
+    check("上級（記事3・広告7枚）を最後まで読める", okH);
+    check("上級では、広告が出てもヒントのボタンが出ない", !hintSeen);
+    const res = await p.evaluate(() => ({ txt: document.querySelector("#stage .card").textContent, h: localStorage.getItem("xdoko-best-news-h"), n: localStorage.getItem("xdoko-best-news") }));
+    check("上級の結果にメダルが出て、記録はふつうと別に残る", /[🥇🥈🥉] (金|銀|銅)メダル/.test(res.txt) && Number(res.h) > 0 && res.n === "99.0", JSON.stringify({ h: res.h, n: res.n }));
+    check("上級の共有の文と挑戦状のリンクに「上級」と &h=1 が入る", res.txt.includes("記事3 上級") && res.txt.includes("&h=1"), res.txt.slice(0, 120));
+    // 図鑑と記録
+    const dx = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem("xdoko-dex") || "{}"), st = JSON.parse(localStorage.getItem("xdoko-stats") || "{}"); menu(); return { types: Object.keys(d).length, clean: Object.values(d).every((e) => e.clean && e.n >= 1), st, btn: document.querySelector("#dexBtn").textContent }; });
+    check("閉じた広告が図鑑に入り（7種類）、ヒントなしの印が付く", dx.types === 7 && dx.clean, JSON.stringify(dx));
+    check("記録：読み切った回数と閉じた広告の枚数が増える", dx.st.clear === 1 && dx.st.closed === 7, JSON.stringify(dx.st));
+    check("メニューの図鑑のボタンに、見つけた数（7/16）が出る", dx.btn.includes("7/16"), dx.btn);
+    await p.click("#dexBtn");
+    const dt = await p.evaluate(() => { const known = Object.keys(JSON.parse(localStorage.getItem("xdoko-dex"))); return { txt: document.querySelector("#stage .card").textContent, names: known.map((k) => TYPES[k].name), unknown: [...document.querySelectorAll(".dex .no")].length }; });
+    check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 9 && dt.txt.includes("広告図鑑 7/16"), dt.unknown);
+    check("図鑑の画面に記録（読み切った・閉じた広告・感染・連続・メダル）が出る", ["読み切った1回", "閉じた広告7枚", "感染した0回", "連続の最高", "メダル"].every((w) => dt.txt.includes(w)), dt.txt.slice(-80));
+    await p.click("#dexBack");
+    check("図鑑からメニューへ戻れる", !!(await p.$("#dailyBtn")));
+    // 感染した回数と、上級の挑戦状のリンク
+    await p.evaluate(() => { start(ARTICLES[0]); }); await p.click("#go");
+    await p.evaluate(() => document.querySelector("#anchor").click()); await p.waitForTimeout(100);
+    check("記録：感染した回数が増える", (await p.evaluate(() => JSON.parse(localStorage.getItem("xdoko-stats")).virus)) === 1);
+    await p.goto(url + "?a=travel&t=40&s=99&h=1"); await p.waitForTimeout(200);
+    check("上級の挑戦状のリンク（&h=1）を開くと、上級で始まる", (await p.textContent("#stage .card")).includes("記事2 上級") && (await p.evaluate(() => MODE.hard === true && ORDER.length === 6 && ORDER.every((t) => TYPES[t].lv >= 2))));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
