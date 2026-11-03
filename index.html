@@ -229,7 +229,8 @@ let toastT;function toast(t,ms=900){say.textContent=t;say.style.opacity=1;clearT
 let ac=null, soundOn=store.get('xdoko-sound')!=='off';
 function tone(f,d,type='sine',v=.12,slide=0){if(!soundOn)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;if(slide)o.frequency.linearRampToValueAtTime(f+slide,ac.currentTime+d);g.gain.value=v;g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 const SND={close:()=>tone(880,.08,'triangle'),clear:()=>{tone(660,.12);setTimeout(()=>tone(990,.2),120)},
-  virus:()=>{tone(120,.8,'sawtooth',.15,-60);setTimeout(()=>tone(90,.8,'square',.08),200)},video:()=>tone(330,.3,'square',.05)};
+  // 感染したときは、音ありなら端末も短くふるわせる（Android など、使える端末だけ）
+  virus:()=>{tone(120,.8,'sawtooth',.15,-60);setTimeout(()=>tone(90,.8,'square',.08),200);if(soundOn)try{navigator.vibrate&&navigator.vibrate([120,60,180])}catch(e){}},video:()=>tone(330,.3,'square',.05)};
 function setSound(){$('#soundBtn').textContent=soundOn?'🔊':'🔇';$('#soundBtn').setAttribute('aria-label',soundOn?'音を切る':'音を出す')}
 $('#soundBtn').onclick=()=>{soundOn=!soundOn;store.set('xdoko-sound',soundOn?'on':'off');setSound()};setSound();
 
@@ -490,6 +491,8 @@ function openAd(full){
   inAd=true;page.classList.add('lock');stage.className=full?'full':'';stage.hidden=false;stage.innerHTML='';$('#panel').hidden=!!MODE.hard;
   const type=ORDER[n], T=TYPES[type], ad=el(T.html(rnd(PRODUCTS)));ad.dataset.type=type;stage.appendChild(ad);
   const w=document.createElement('div');w.className='hint';w.id='hintTxt';w.hidden=true;w.textContent='ヒント：'+T.hint;stage.appendChild(w);
+  // はじめての1枚（まだ1枚も閉じたことがない人）は、ヒントを時間なしで先に見せる。最初の1枚でつまずいてやめないように
+  if(MODE.kind!=='practice'&&!MODE.hard&&!(stats().closed||0)&&n===0){w.hidden=false;w.textContent='はじめての1枚なので、ヒントを時間なしで出しています。'+T.hint}
   ad.addEventListener('click',e=>{const t=e.target;
     const r=t.closest('.real');if(r&&!r.disabled)return win();
     if(t.closest('.nest')||t.closest('.skip'))return;

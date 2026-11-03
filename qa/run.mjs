@@ -179,6 +179,7 @@ if (browser) try {
   {
     const p = await open({ unlock: false });
     check("最初は記事1だけ開いている", !(await p.isDisabled('.lv[data-i="0"]')) && (await p.isDisabled('.lv[data-i="1"]')) && (await p.isDisabled('.lv[data-i="2"]')));
+    await p.evaluate(() => localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 })));
     await startArt(p, 0);
     for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
     const before = await p.evaluate(() => pen); await p.click("#hintBtn"); const after = await p.evaluate(() => pen);
@@ -568,6 +569,19 @@ if (browser) try {
       r1?.t.includes("つづき：記事2") && r2?.t.includes("金をねらう：記事1") && r3?.t.includes("上級に挑む：記事1") && r4?.t.includes("ロングを読み切る") && [r1, r2, r3, r4].every((x) => x.h >= 44), JSON.stringify([r1, r2, r3, r4]));
     await g({ "xdoko-best-recipe": "25.0" }); await p.click("#goalBtn");
     check("次の目標のボタンを押すと、その記事がすぐ始まる", (await p.textContent("#stage .card")).includes("記事2"));
+    await p.close();
+  }
+
+  // 5k. はじめての1枚はヒントを時間なしで先に見せる（2枚目からは出さない）
+  {
+    const p = await open({ unlock: false });
+    await p.click('.lv[data-i="0"]'); await p.click("#go");
+    for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
+    const f1 = await p.evaluate(() => ({ shown: !document.querySelector("#hintTxt").hidden, txt: document.querySelector("#hintTxt").textContent, pen }));
+    check("はじめての1枚は、ヒントが時間なし（+0秒）で先に出る", f1.shown && f1.txt.includes("はじめての1枚") && f1.pen === 0, JSON.stringify(f1));
+    await solve(p); await p.waitForTimeout(60);
+    for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
+    check("2枚目からは、ヒントは押したときだけ出る", await p.evaluate(() => document.querySelector("#hintTxt").hidden));
     await p.close();
   }
 
