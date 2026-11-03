@@ -29,6 +29,7 @@ node qa/run.mjs 20   # 広告の組み合わせを変えたときは、通しを
 - ベストとの差は、自己ベストのときの閉じた時刻（`xdoko-split-<記事>[-h]`）と比べる。数が広告の数と合わないときは比べない。練習（`MODE.kind==='practice'`）は、ベスト・図鑑・記録のどれも増やさず、感染の画面も出さない（qa が見る）。
 - 今日の1本は日の番号、記事の挑戦状はリンクの `&s=`（遊ぶたびに決める並びの番号）から作る乱数（`seeded`）で並びを決める。広告の並び・関所・記事の中の広告は `R()` を使い、`Math.random()` を直接使わない（同じ日に人によって並びが変わってしまう）。`TYPES`・`ARTICLES` を変えると過去の日の並びも変わるので、変えた PR に一言書く。
 - 共有は、遊ぶ人が押したときに開くリンク（X・LINE の公式の共有リンク・Web Share・コピー）だけ。ページから外へ送る部品は入れない。
+- 感想は、メニューと結果の「感想を送る」から GitHub の Issue フォーム（`.github/ISSUE_TEMPLATE/feedback.yml`、ラベル「感想」）を開くだけ。項目は shared-workflows の `template/.github/ISSUE_TEMPLATE/feedback.yml` と同じにし、名前・メールは聞かない。週1で shared-workflows `routines/game-feedback.md` が読んで直す。
 - 押せる所（メニュー・音・ヒントなど、ゲームの外のボタン）は高さ44px以上（Apple HIG。qa が見る）。広告の中の小さな×は遊びなので別。
 - SNS に貼ったときの画像は `og.png`（1200×630）。見た目を変えたら `tools/og.html` を直して `node tools/make-og.mjs` で作り直す。
 - PWA（`manifest.webmanifest`・`sw.js`・`icon-*.png`）：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。sw.js は外へ何も送らない。
