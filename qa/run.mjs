@@ -475,6 +475,41 @@ if (browser) try {
     await p.close();
   }
 
+  // 5g. ロング：3本つなぎ・広告12枚・先ほど難しい。3本とも読み切ると開く
+  {
+    const p = await open({ unlock: false });
+    check("ロングは、3本とも読み切るまで開かない", await p.isDisabled("#longBtn"));
+    await p.evaluate(() => { ARTICLES.forEach((a) => localStorage.setItem("xdoko-best-" + a.id, "99.0")); menu(); });
+    check("3本とも読み切るとロングが開く", !(await p.isDisabled("#longBtn")));
+    const lo = await p.evaluate(() => { const bad = []; for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(LONG); const lv = o.map((t) => TYPES[t].lv).join("");
+      if (o.length !== 12 || new Set(o).size !== 12 || lv !== "111122223333") { bad.push(o.join()); break; } } return bad; });
+    check("ロングの広告の並びを500回作って、どれも12枚・重なりなし・★1→★2→★3を4枚ずつ", lo.length === 0, lo.join(" / "));
+    const gl = [];
+    for (let r = 0; r < 20; r++) gl.push(await p.evaluate(() => { A = LONG; MODE = { kind: "article" }; build();
+      const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top);
+      return { min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length }; }));
+    const tl = gl.filter((g) => g.min < H * 0.75 || g.n !== 12);
+    check("ロングの関所を20回置き直して、いつも12か所・広告の間は0.75画面以上", tl.length === 0, tl.map((g) => `${Math.round(g.min)}px n=${g.n}`).join(","));
+    await p.evaluate(() => menu());
+    await p.click("#longBtn");
+    check("ロングの始めのカードに「ロング」と広告12枚が出る", (await p.textContent("#stage .card")).includes("ロング（3本つなぎ）") && (await p.textContent("#stage .card")).includes("広告は12枚"));
+    await p.click("#go");
+    let okL = true; try { await playOn(p, "ロング"); } catch (e) { okL = false; console.log(e.message); }
+    check("ロング（広告12枚）を最後まで読める", okL);
+    const lr = await p.evaluate(() => ({ n: localStorage.getItem("xdoko-long-n"), b: localStorage.getItem("xdoko-best-long"), next: !!document.querySelector("#nextArt"), txt: document.querySelector("#shareTxt")?.textContent || "" }));
+    check("ロングを読み切ると、最高12枚とタイムが残り、「次の記事へ」は出ない・共有に「ロング」と a=long", lr.n === "12" && Number(lr.b) > 0 && !lr.next && lr.txt.includes("ロング「よみもの広場」") && lr.txt.includes("?a=long&"), JSON.stringify(lr));
+    await p.evaluate(() => { localStorage.setItem("xdoko-long-n", "3"); start(LONG); }); await p.click("#go");
+    for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
+    await solve(p); await p.waitForTimeout(60);
+    for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
+    await p.evaluate(() => document.querySelector("#anchor").click()); await p.waitForTimeout(150);
+    const lf = await p.evaluate(() => ({ how: document.querySelector("#vhow").textContent, n: localStorage.getItem("xdoko-long-n") }));
+    check("ロングでまちがえると、何枚まで閉じたかとベストの枚数が出る（ベストは下がらない）", lf.how.includes("広告 1/12枚まで閉じた") && lf.how.includes("ベスト 3枚") && lf.n === "3", JSON.stringify(lf));
+    await p.goto(url + "?a=long&t=120&s=77&h=1"); await p.waitForTimeout(200);
+    check("ロングの挑戦状のリンクで、同じ並び（s）のロングが始まる（上級にはならない）", (await p.textContent("#stage .card")).includes("ロング") && (await p.evaluate(() => A === LONG && MODE.seed === 77 && !MODE.hard)));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
