@@ -9,6 +9,17 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="description" content="広告をよけて記事を最後まで読むタイムアタック。本物の×だけを押そう。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="×はどこだ">
+<meta property="og:title" content="×はどこだ｜本物の×だけを押せ">
+<meta property="og:description" content="広告をよけて記事を最後まで読むタイムアタック。まちがえて押すとウイルスに感染…。今日の1本は、みんな同じ広告の並び。">
+<meta property="og:url" content="https://satou-aaaaa.github.io/batsu-doko/">
+<meta property="og:image" content="https://satou-aaaaa.github.io/batsu-doko/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="広告の中に×が3つ。本物はどれ？">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap">
 <style>
 /* Layout: 本物のサイトのような記事ページ。読み進めると広告がふさぐ。単一テーマ（昼のサイト）で固定 */
@@ -33,7 +44,10 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .logo b{color:var(--hot)}
 .topr{display:flex;align-items:center;gap:10px}
 .clock{font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
-.icon{border:1px solid var(--line);background:var(--card);border-radius:999px;width:34px;height:34px;cursor:pointer;font-size:15px}
+.icon{border:1px solid var(--line);background:var(--card);border-radius:999px;width:44px;height:44px;cursor:pointer;font-size:16px}
+.cnt{font-size:12px;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.prog{position:absolute;left:0;right:0;bottom:-1px;height:3px;background:transparent}
+.prog i{display:block;height:100%;width:0;background:var(--site);transition:width .15s linear}
 
 .article{max-width:620px;margin:0 auto;font-size:15px;line-height:1.9;color:#3a4254}
 .sitebar{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-weight:800;color:var(--site);font-size:14px}
@@ -66,7 +80,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #stage.full{background:#11131a}
 #stage.full::before{content:"広告";position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));color:#9aa3b5;font-size:12px}
-#stage.menu{background:var(--paper);touch-action:auto;overflow-y:auto;justify-content:flex-start;padding-block:24px}
+#stage.menu{background:var(--paper);touch-action:auto;overflow-y:auto;justify-content:safe center;padding-block:24px}
 .ad{position:relative;box-sizing:border-box;width:min(100%,340px);background:var(--ad);color:var(--adink);border:3px solid var(--adink);border-radius:6px;box-shadow:6px 6px 0 var(--adink);padding:22px 16px 16px;text-align:center;font-weight:800;animation:pop .2s ease-out}
 .ad h3{font-family:var(--display);font-size:24px;line-height:1.3;margin:4px 0 8px;color:var(--hot);text-wrap:balance}
 .ad p{margin:6px 0;font-size:14px;line-height:1.6}
@@ -90,7 +104,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 
 .hint{font-size:13px;color:#fff;text-shadow:0 1px 2px #000;text-align:center;max-width:320px}
 .panel{position:fixed;left:0;right:0;bottom:70px;display:flex;justify-content:center;z-index:5}
-.panel button{background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:8px 16px;font:700 14px var(--body);cursor:pointer}
+.panel button{background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:8px 18px;min-height:44px;font:700 14px var(--body);cursor:pointer}
 .say{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:var(--ok);color:#fff;padding:8px 16px;border-radius:12px;font-size:14px;font-weight:700;z-index:6;transition:opacity .3s;pointer-events:none}
 
 .card{box-sizing:border-box;background:var(--card);color:var(--ink);border:3px solid var(--ink);border-radius:12px;padding:22px 18px;width:min(100%,380px);text-align:center;box-shadow:6px 6px 0 var(--ink);animation:pop .2s ease-out}
@@ -108,6 +122,39 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .btn2{background:var(--ink)}
 .total{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.how{display:flex;justify-content:center;gap:6px;margin:12px 0 2px;font-size:12px;color:var(--muted);font-weight:700}
+.how span{flex:1;background:var(--paper);border-radius:8px;padding:8px 4px;line-height:1.4}
+.how b{display:block;font-size:20px;color:var(--ink)}
+.daily{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:12px;background:var(--ink);color:#fff;padding:14px;margin:14px 0 4px;cursor:pointer;font:800 16px var(--body);box-shadow:0 4px 0 var(--hot)}
+.daily .t{flex:1;min-width:0}
+.daily small{display:block;font-weight:400;font-size:12px;color:#c9cfdb;margin-top:2px}
+.daily .bt{font-family:var(--display);font-size:15px;font-variant-numeric:tabular-nums}
+.daily .go{background:var(--hot);border-radius:999px;padding:6px 12px;font-size:13px}
+.streak{color:#ffcf4a}
+.lv.hard{border-color:var(--hot)}
+.lv .md{font-size:16px;margin-left:4px}
+.medal{font-size:15px;margin:4px 0}
+.dex{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;text-align:left}
+.dex div{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;line-height:1.45;background:var(--paper);min-width:0}
+.dex b{display:block;font-size:13px}
+.dex .no{color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;margin:6px 0 12px}
+.stats span{background:var(--paper);border-radius:8px;padding:8px}
+.stats b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.sec{font-size:12px;color:var(--muted);font-weight:800;text-align:left;margin:14px 0 0}
+.grid{font-size:22px;letter-spacing:2px;margin:6px 0 0}
+.vs{display:flex;justify-content:center;gap:10px;margin:10px 0 4px;font-variant-numeric:tabular-nums}
+.vs span{flex:1;background:var(--paper);border-radius:8px;padding:8px;font-size:12px;color:var(--muted)}
+.vs b{display:block;font-family:var(--display);font-size:20px;color:var(--ink)}
+.won{color:var(--ok);font-weight:800}
+.lost{color:var(--hot);font-weight:800}
+.sharebtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 10px}
+.sharebtns a,.sharebtns button{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;font:800 14px var(--body);text-decoration:none;cursor:pointer;border:2px solid var(--ink);background:#fff;color:var(--ink)}
+.sharebtns .prim{grid-column:1/-1;background:var(--hot);border-color:var(--hot);color:#fff}
+.letter{border:2px dashed var(--hot);border-radius:10px;padding:10px;margin:10px 0;background:#fff5f8}
+.foot{font-size:12px;color:var(--muted);margin-top:12px}
+#virus .how2{font-size:14px;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:10px 12px;max-width:340px;line-height:1.6}
+#virus .how2 small{display:block;color:#ffb0b0;font-size:12px;margin-top:4px}
 
 #virus{position:fixed;inset:0;z-index:20;background:#0a0000;color:#ff3030;font-family:ui-monospace,Menlo,Consolas,monospace;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;text-align:center;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px;overflow:hidden}
@@ -133,7 +180,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 </head>
 <body>
 <div id="page">
-  <div class="top"><div class="logo"><b>×</b>はどこだ</div><div class="topr"><button class="icon" id="soundBtn" type="button" aria-label="音を切る">🔊</button><div class="clock" id="clock">0.0秒</div></div></div>
+  <div class="top"><div class="logo"><b>×</b>はどこだ</div><div class="topr"><span class="cnt" id="cnt" aria-live="polite"></span><button class="icon" id="soundBtn" type="button" aria-label="音を切る">🔊</button><div class="clock" id="clock">0.0秒</div></div><div class="prog" aria-hidden="true"><i id="progBar"></i></div></div>
   <div id="appbarSlot"></div>
   <div class="article" id="art"></div>
 </div>
@@ -144,8 +191,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 <div id="virus" hidden><div class="noise"></div>
   <div class="scare"><div class="warn">⚠ SYSTEM ALERT ⚠</div><h2>ウイルスに感染しました</h2>
     <p id="vmsg">あなたの端末から 写真 を送信しています…</p><div class="bar"><i id="vbar"></i></div><div class="log" id="vlog"></div></div>
-  <div class="over"><b>GAME OVER</b><p id="vwhy"></p><p style="font-size:12px;opacity:.7">※ゲームの画面です。実際の端末には何も起きていません。</p>
-    <div class="btns"><button class="big" id="againBtn" type="button">もう一度</button><button class="big btn2" id="menuBtn" type="button">記事を選ぶ</button></div></div>
+  <div class="over"><b>GAME OVER</b><p id="vwhy"></p><div class="how2" id="vhow"></div><p style="font-size:12px;opacity:.7">※ゲームの画面です。実際の端末には何も起きていません。</p>
+    <div class="btns"><button class="big" id="againBtn" type="button">もう一度</button><button class="big btn2" id="menuBtn" type="button">メニュー</button></div></div>
 </div>
 
 <script>
@@ -153,8 +200,11 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 const $=s=>document.querySelector(s);
 const stage=$('#stage'), page=$('#page'), say=$('#say');
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-const rnd=a=>a[Math.floor(Math.random()*a.length)];
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+// 乱数。「今日の1本」と挑戦状は日付の番号から作る乱数で、だれが遊んでも同じ広告の並びになる
+let R=Math.random;
+function seeded(n){let a=(n*2654435761)>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}}
+const rnd=a=>a[Math.floor(R()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild}
 let toastT;function toast(t){say.textContent=t;say.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>say.style.opacity=0,900)}
 
@@ -179,54 +229,54 @@ const head=p=>`<h3>${p[0]}<br>${p[1]}</h3><p>${p[2]}</p>`;
 
 /* ---------- ふさぐ広告の種類。real を押すと閉じる。fake・big を押すとゲームオーバー ---------- */
 const TYPES={
- corner:{lv:1,hint:'右上の小さい×。',
+ corner:{name:'すみの×',lv:1,hint:'右上の小さい×。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x real" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big">${p[3]}</button></div>`},
- bigfake:{lv:1,hint:'大きい×はボタン。本物は下の小さな文字。',
+ bigfake:{name:'大きなにせ×',lv:1,hint:'大きい×はボタン。本物は下の小さな文字。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="big fake" style="position:absolute;right:-14px;top:-18px;padding:8px 14px;font-size:22px;margin:0">×</button>${head(p)}<button class="big">${p[3]}</button>
    <button class="x real" style="left:50%;bottom:-2px;transform:translateX(-50%);font-size:9px;opacity:.55" aria-label="閉じる">閉じる</button></div>`},
- outside:{lv:1,hint:'枠の外にある×。枠の中の ⓘ は広告の説明。',
+ outside:{name:'枠の外の×',lv:1,hint:'枠の外にある×。枠の中の ⓘ は広告の説明。',
   html:p=>`<div class="ad" style="margin-top:26px"><button class="x real" style="right:-6px;top:-34px;background:#fff;border-radius:50%;width:28px;height:28px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.3)" aria-label="閉じる">×</button>
    <button class="x fake" style="right:4px;top:2px;font-size:14px" aria-label="広告について">ⓘ</button><span class="tag">広告</span>${head(p)}<button class="big">${p[3]}</button></div>`},
- label:{lv:1,hint:'「広告」の横の小さな文字。',
+ label:{name:'「広告」の文字',lv:1,hint:'「広告」の横の小さな文字。',
   html:p=>`<div class="ad"><span class="tag real" role="button" tabindex="0" style="cursor:pointer" aria-label="閉じる">広告　広告を閉じる</span><button class="x fake" style="right:4px;top:2px">×</button>${head(p)}<button class="big fake">${p[3]}</button></div>`},
- three:{lv:1,hint:'×が3つ。本物は1つだけ。',
-  html:p=>{const r=Math.floor(Math.random()*3);const order=[0,1,2].map(i=>i===r?'×':rnd(['✕','Χ','⨉']));
+ three:{name:'3つの×',lv:1,hint:'×が3つ。本物は1つだけ。',
+  html:p=>{const r=Math.floor(R()*3);const order=[0,1,2].map(i=>i===r?'×':rnd(['✕','Χ','⨉']));
    return `<div class="ad"><span class="tag">広告</span>${order.map((c,i)=>`<button class="x ${i===r?'real':'fake'}" style="right:${4+i*30}px;top:2px"${i===r?' aria-label="閉じる"':''}>${c}</button>`).join('')}${head(p)}<button class="big">${p[3]}</button></div>`}},
- rate:{lv:1,hint:'「あとで」を押す。',
+ rate:{name:'評価のお願い',lv:1,hint:'「あとで」を押す。',
   html:p=>`<div class="sys"><b>このサイトを評価してください</b><p style="margin:8px 0 0;font-size:22px;letter-spacing:4px">☆☆☆☆☆</p><p style="margin:6px 0 0;color:#5f6368;font-size:13px">評価するとアプリの限定クーポンがもらえます</p>
    <div class="row"><button class="real" aria-label="閉じる">あとで</button><button class="prim fake">評価してクーポンをもらう</button></div></div>`},
- shift:{lv:2,hint:'画像が読み込まれると×がずれる。止まってから押す。',
+ shift:{name:'逃げる×',lv:2,hint:'画像が読み込まれると×がずれる。止まってから押す。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x real run" style="right:4px;top:2px;transition:all .25s" aria-label="閉じる">×</button>${head(p)}<button class="big">${p[3]}</button></div>`,
   wire(ad){let k=0,block=false;const x=ad.querySelector('.run');
    const spots=[{left:'4px',right:'auto',top:'2px',bottom:'auto'},{left:'auto',right:'4px',top:'auto',bottom:'2px'},{left:'4px',right:'auto',top:'auto',bottom:'2px'}];
    x.addEventListener('pointerdown',()=>{block=false;if(k>=3)return;Object.assign(x.style,spots[k]);k++;block=true},true);
    x.addEventListener('click',e=>{if(block){block=false;e.stopImmediatePropagation()}},true)}},
- terms:{lv:2,hint:'注意事項のいちばん下に閉じるボタンがある。',
+ terms:{name:'長い注意事項',lv:2,hint:'注意事項のいちばん下に閉じるボタンがある。',
   html:p=>`<div class="ad"><span class="tag">広告</span><h3>アンケートに答えて<br>ポイントGET</h3>
    <div class="scroll">【注意事項】<br>・お一人様1回限りです。<br>・ポイントの付与には最大60日かかります。<br>・回答内容によっては対象外となる場合があります。<br>・ポイントの有効期限は付与から180日です。<br>・詳しくは利用規約をご確認ください。<br><button class="x real" style="position:static;font-size:13px;text-decoration:underline" aria-label="閉じる">広告を閉じる</button></div>
    <button class="big fake">同意して回答する</button></div>`},
- picx:{lv:2,hint:'画像の中の×は絵。本物は右上のうすい×。',
+ picx:{name:'絵の中の×',lv:2,hint:'画像の中の×は絵。本物は右上のうすい×。',
   html:p=>`<div class="ad"><span class="tag">広告</span><h3>${p[0]}<br>${p[1]}</h3><div class="pict" aria-hidden="true">🎁<button class="x fake" style="right:22%;top:0;font-size:20px;background:#fff;border-radius:50%;width:30px;height:30px;padding:0">×</button></div>
    <button class="x real" style="right:4px;top:2px;color:#d8c860" aria-label="閉じる">×</button><button class="big fake">${p[3]}</button></div>`},
- confirm:{lv:2,hint:'×を押すと確認が出る。「閉じる」を選ぶ。',
+ confirm:{name:'引き止め',lv:2,hint:'×を押すと確認が出る。「閉じる」を選ぶ。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button><h3>今だけ使える<br>500円クーポン</h3><p>本日23:59まで</p><button class="big fake first">クーポンを受け取る</button>
    <div class="cf" hidden><p>本当に閉じますか？クーポンは失効します。</p><button class="big fake">クーポンを受け取る</button><br><button class="x real" style="position:static;font-size:12px;opacity:.7" aria-label="閉じる">閉じる</button></div></div>`,
   wire(ad){const x=ad.querySelector('.nest');x.onclick=()=>{ad.querySelector('.cf').hidden=false;ad.querySelector('.first').hidden=true;x.hidden=true}}},
- app:{lv:2,hint:'アプリには行かない。小さな「ブラウザで続ける」。',
+ app:{name:'アプリへの案内',lv:2,hint:'アプリには行かない。小さな「ブラウザで続ける」。',
   html:p=>`<div class="sys" style="text-align:center"><div style="font-size:40px">📲</div><b>アプリなら記事がもっと快適に</b><p style="color:#5f6368;font-size:13px;margin:6px 0 0">広告なし・オフラインで読める</p>
    <button class="big fake" style="background:#1a56d6;width:100%">アプリで開く（おすすめ）</button><br><button class="real" style="border:0;background:none;color:#5f6368;font-size:12px;margin-top:10px;cursor:pointer;text-decoration:underline" aria-label="閉じる">ブラウザで続ける</button></div>`},
- countdown:{lv:3,hint:'秒数が終わると×が出る。',
+ countdown:{name:'待たされる×',lv:3,hint:'秒数が終わると×が出る。',
   html:p=>`<div class="ad"><span class="tag">広告</span><span class="cd" style="position:absolute;right:8px;top:6px;font-size:11px">5秒後に閉じられます</span><button class="x real" style="right:4px;top:2px" hidden aria-label="閉じる">×</button>${head(p)}<button class="big fake">${p[3]}</button></div>`,
   wire(ad){let c=5;const cd=ad.querySelector('.cd'),x=ad.querySelector('.real');const iv=setInterval(()=>{if(!ad.isConnected)return clearInterval(iv);c--;if(c<=0){clearInterval(iv);cd.hidden=true;x.hidden=false}else cd.textContent=c+'秒後に閉じられます'},1000)}},
- video:{lv:3,hint:'5秒たつと「スキップ」が押せる。',
+ video:{name:'動画広告',lv:3,hint:'5秒たつと「スキップ」が押せる。',
   html:p=>`<div class="video"><div class="scr" aria-hidden="true">🎬</div><div class="bar"><i></i></div><div class="ctl"><span>広告・${p[0]}</span><button class="buy fake">${p[3]}</button></div>
    <div class="ctl" style="justify-content:flex-end;padding-top:0"><button class="skip" disabled>広告をスキップ（5）</button></div></div>`,
   wire(ad){let c=5;const s=ad.querySelector('.skip'),b=ad.querySelector('.bar i');SND.video();b.style.transition='width 8s linear';requestAnimationFrame(()=>requestAnimationFrame(()=>b.style.width='100%'));
    const iv=setInterval(()=>{if(!ad.isConnected)return clearInterval(iv);c--;if(c<=0){clearInterval(iv);s.disabled=false;s.textContent='スキップ ›';s.classList.add('real');s.setAttribute('aria-label','閉じる')}else s.textContent='広告をスキップ（'+c+'）'},1000)}},
- notify:{lv:3,hint:'通知は「ブロック」。',
+ notify:{name:'通知の許可',lv:3,hint:'通知は「ブロック」。',
   html:p=>`<div class="sys"><b>このサイトが通知の送信を求めています</b><p style="margin:8px 0 0;color:#5f6368;font-size:13px">「許可」を押すと、最新のお得情報をお届けします</p>
    <div class="row"><button class="real" aria-label="閉じる">ブロック</button><button class="prim fake">許可</button></div></div>`},
- swipe:{lv:3,hint:'×は無い。上か横にスワイプして閉じる。',
+ swipe:{name:'×の無い広告',lv:3,hint:'×は無い。上か横にスワイプして閉じる。',
   html:p=>`<div class="ad drag" style="cursor:grab" tabindex="0" aria-label="広告。上か横にスワイプ（キーボードは矢印キー）で閉じる"><span class="tag">広告</span>${head(p)}<button class="big fake">${p[3]}</button><p style="font-size:11px;font-weight:400;margin-top:10px">↑ スワイプして記事に戻る</p></div>`,
   wire(ad){let sx,sy,on=false;ad.addEventListener('pointerdown',e=>{if(e.target.closest('.big'))return;on=true;sx=e.clientX;sy=e.clientY;try{ad.setPointerCapture(e.pointerId)}catch(_){}ad.style.animation='none'});
    ad.addEventListener('pointermove',e=>{if(!on)return;ad.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`});
@@ -234,7 +284,7 @@ const TYPES={
    ad.addEventListener('pointerup',up);ad.addEventListener('pointercancel',up);
    // キーボードだけで遊ぶ人のために、矢印キーでもスワイプと同じく閉じる
    ad.addEventListener('keydown',e=>{if(['ArrowUp','ArrowLeft','ArrowRight'].includes(e.key)&&e.target===ad){e.preventDefault();win()}});ad.focus({preventScroll:true})}},
- chain:{lv:3,hint:'閉じたあと、下からもう1枚出てくる。',
+ chain:{name:'おかわり広告',lv:3,hint:'閉じたあと、下からもう1枚出てくる。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big fake first">${p[3]}</button>
    <div class="cf" hidden style="border-top:2px dashed var(--adink);margin-top:10px;padding-top:8px"><p>こちらもおすすめ</p><p style="font-size:13px">${rnd(PRODUCTS)[0]}</p><button class="big fake">見てみる</button><br><button class="x real" style="position:static;font-size:16px" aria-label="閉じる">× 閉じる</button></div></div>`,
   wire(ad){const x=ad.querySelector('.nest');x.onclick=()=>{SND.close();ad.querySelector('.cf').hidden=false;ad.querySelector('.first').hidden=true;x.hidden=true;ad.querySelector('h3').hidden=true}}},
@@ -243,7 +293,7 @@ const TYPES={
 /* ---------- 記事（3本）。すべて架空のサイト ---------- */
 const ARTICLES=[
  {id:'recipe',site:'まいにちごはん帖',color:'#d0661f',ph:'linear-gradient(135deg,#ffe2b8,#ffd0d8)',crumb:'ホーム › 献立',title:'冷蔵庫の残りで作る 1週間の晩ごはん',meta:'2026年11月3日 更新',
-  ads:4,lv:1,vignette:false,anchor:true,
+  ads:4,lv:1,vignette:false,anchor:true,gold:20,goldH:30,
   secs:[['','「今日なに作ろう」を考えるのが、いちばん疲れる。そんな人のために、残り物だけで回す1週間の献立をまとめました。|使うのは、どこの冷蔵庫にもありそうなものばかり。特別な道具もいりません。'],
    ['月曜：ふわふわ卵の甘辛丼','🍳','卵3個と玉ねぎ半分。しょうゆとみりんで玉ねぎを煮て、卵を2回に分けて流すと、ふわふわになります。|火を止めてから、ふたをして1分。余熱で半熟に仕上げるのがコツです。'],
    ['火曜：キャベツの芯のきんぴら','🥬','捨てがちな芯を細切りに。ごま油で炒めて、しょうゆと砂糖で甘辛く。|シャキシャキが残るくらいで火を止めます。'],
@@ -254,7 +304,7 @@ const ARTICLES=[
    ['日曜：残り物のおつまみ盛り','🍱','1週間がんばったので、日曜は残り物を全部並べて小皿に盛るだけ。|それでいいんです。'],
    ['まとめ','','献立は「考えない仕組み」を作ると楽になります。来週もこの表を使い回してください。']]},
  {id:'travel',site:'週末ふらり旅',color:'#1f8a70',ph:'linear-gradient(135deg,#bfe9dc,#cfe0ff)',crumb:'ホーム › 国内 › 港町',title:'港町で過ごす1泊2日 ゆっくり歩くモデルコース',meta:'2026年10月28日 公開',
-  ads:6,lv:2,vignette:true,anchor:true,
+  ads:6,lv:2,vignette:true,anchor:true,gold:38,goldH:50,
   secs:[['','電車で2時間ほどの港町へ。坂道と海が近い町を、のんびり歩いて回るコースを紹介します。|移動は徒歩とバスだけ。歩きやすい靴で出かけましょう。'],
    ['1日目 10:00 駅前の朝市','🐟','駅を出てすぐの朝市は、地元の干物や野菜が並びます。|味見をさせてくれるお店も多く、歩くだけで楽しい場所です。'],
    ['11:30 坂の上の展望台','⛰️','朝市から歩いて20分。少し息が上がりますが、港を一望できます。|ベンチがあるので、ひと休みにちょうどいいです。'],
@@ -268,7 +318,7 @@ const ARTICLES=[
    ['14:30 帰りの電車へ','🚃','歩いた距離は2日で約15km。|疲れたぶん、帰りの電車はぐっすり眠れます。'],
    ['まとめ','','急がずに歩くと、港町の良さがよくわかります。季節を変えて、また来たくなる町でした。']]},
  {id:'news',site:'みなと市ニュース',color:'#2f62e6',ph:'linear-gradient(135deg,#d6e2ff,#e8e8f0)',crumb:'ホーム › 地域 › くらし',title:'みなと市の新しい図書館、来年春に開館へ 夜9時まで利用可能に',meta:'2026年11月2日 18:05 配信',
-  ads:7,lv:3,vignette:true,anchor:true,appbar:true,
+  ads:7,lv:3,vignette:true,anchor:true,appbar:true,gold:50,goldH:65,
   secs:[['','みなと市は、駅前に建設中の新しい図書館を来年4月に開館すると発表した。平日は夜9時まで開き、仕事帰りにも立ち寄りやすくする。|市によると、蔵書は約30万冊で、今の図書館の1.5倍になる。'],
    ['駅から徒歩3分','🏛️','新しい図書館は、駅の東口から歩いて3分の場所に建つ。地上4階建てで、1階にはカフェが入る。|市の担当者は「通勤や通学のついでに使ってほしい」と話す。'],
    ['子ども向けの部屋も','🧸','2階には、声を出して読み聞かせができる子ども向けの部屋をつくる。|ベビーカーのまま入れる広い通路も用意する。'],
@@ -284,17 +334,40 @@ const ARTICLES=[
 ];
 
 /* ---------- 遊びの進み ---------- */
-let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inAd=false, pend=null;
+let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inAd=false, pend=null, used=[], MODE={kind:'article'};
+// 今日の番号（日本時間。2026-11-03 が #1）。検査では window.__XDOKO_DAY で日を決められる
+const DAY0=Date.UTC(2026,10,3)/864e5;
+const today=()=>Number.isInteger(window.__XDOKO_DAY)?window.__XDOKO_DAY:Math.floor((Date.now()+9*36e5)/864e5)-DAY0+1;
+const dailyArt=d=>ARTICLES[((d-1)%ARTICLES.length+ARTICLES.length)%ARTICLES.length];
+const SITE='https://satou-aaaaa.github.io/batsu-doko/';
+const baseUrl=()=>/^https?:$/.test(location.protocol)?location.origin+location.pathname:SITE;
+const dBest=d=>Number(store.get('xdoko-daily-'+d)||0);
+function streak(){try{return JSON.parse(store.get('xdoko-streak'))||{last:0,count:0,max:0}}catch(e){return{last:0,count:0,max:0}}}
+function shownStreak(){const s=streak(),d=today();return (s.last===d||s.last===d-1)?s.count:0}
 const now=()=>(performance.now()-t0)/1000+pen, fmt=x=>x.toFixed(1)+'秒';
 function tick(){if(!running)return;$('#clock').textContent=fmt(now());raf=requestAnimationFrame(tick)}
 const best=id=>Number(store.get('xdoko-best-'+id)||0);
 const cleared=id=>best(id)>0;
+// 上級：同じ記事・同じ枚数で、難しい広告（★2〜3、★3を2枚以上）だけが出て、ヒントは使えない。枚数を増やすと広告の間が詰まる（0.75画面以上あける決まり）ので増やさない
+const HARD=new Map();
+const hardOf=a=>{if(!HARD.has(a))HARD.set(a,{...a,lv:3,hard:true});return HARD.get(a)};
+const cfg=()=>MODE.hard?hardOf(A):A;
+const bestH=id=>Number(store.get('xdoko-best-'+id+'-h')||0);
+// メダル：金は目安のタイム以内、銀は1.4倍以内、銅は読み切れば
+const goldOf=(a,h)=>h?a.goldH:a.gold;
+function medal(t,a,h){if(!t)return '';const g=goldOf(a,h);return t<=g?'🥇':t<=g*1.4?'🥈':'🥉'}
+function nextMedal(t,a,h){const g=goldOf(a,h);if(t<=g)return '';const s=t<=g*1.4?['金',g]:['銀',g*1.4];return `${s[0]}まで あと ${fmt(Math.max(0.1,t-s[1]))}`}
+// 図鑑と記録（この端末のブラウザにだけ残す）
+function getJ(k,d){try{return JSON.parse(store.get(k))||d}catch(e){return d}}
+const dex=()=>getJ('xdoko-dex',{}), stats=()=>getJ('xdoko-stats',{clear:0,closed:0,virus:0});
+function bump(k){const s=stats();s[k]=(s[k]||0)+1;store.set('xdoko-stats',JSON.stringify(s))}
+function found(type,hint){const d=dex(),e=d[type]||{n:0,clean:false};e.n++;if(!hint)e.clean=true;d[type]=e;store.set('xdoko-dex',JSON.stringify(d))}
 
 function build(){
-  const a=A;document.documentElement.style.setProperty('--site',a.color);document.documentElement.style.setProperty('--ph',a.ph);
+  const a=cfg();document.documentElement.style.setProperty('--site',a.color);document.documentElement.style.setProperty('--ph',a.ph);
   const S=a.secs.length, G=a.ads-(a.vignette?1:0), half=Math.floor(S/2);
   let h=`<div class="sitebar"><i aria-hidden="true"></i>${a.site}</div><div class="crumb">${a.crumb}</div><h2>${a.title}</h2><div class="meta">${a.meta}</div>`;
-  let k=Math.floor(Math.random()*INADS.length);
+  let k=Math.floor(R()*INADS.length);
   a.secs.forEach((s,i)=>{
     const [t,pic,body]=s.length===3?s:[s[0],'',s[1]];
     if(t)h+=`<h4>${t}</h4>`;
@@ -314,23 +387,25 @@ function build(){
   V=a.vignette?chosen.filter(i=>ys[i]<nbY).length:-1;
   chosen.forEach((si,j)=>{const g=document.createElement('div');g.className='gate';g.dataset.i=(V<0||j<V)?j:j+1;spots[si].after(g)});
   if(p2)p2.hidden=true;
-  $('#art').querySelectorAll('.inad').forEach(x=>x.onclick=()=>running&&fail('記事の中の広告「'+x.querySelector('span').textContent+'」を押しました'));
+  $('#art').querySelectorAll('.inad').forEach(x=>x.onclick=()=>running&&fail('記事の中の広告「'+x.querySelector('span').textContent+'」を押しました','記事の中の広告は、押さずに読み飛ばす。'));
   const nb=$('#nextBtn');if(nb)nb.onclick=()=>{if(running&&!inAd&&n===V)openAd(true)};
   $('#anchor').hidden=!a.anchor;$('#anchorTxt').textContent=rnd(ANCHORS);
   $('#appbarSlot').innerHTML=a.appbar?`<div class="appbar" id="appbar"><span>📰 アプリで読むともっと便利</span><button class="open" type="button">開く</button><button class="shut" type="button" aria-label="閉じる">×</button></div>`:'';
-  if(a.appbar){$('#appbar .open').onclick=()=>running&&fail('上の「アプリで開く」を押しました');$('#appbar .shut').onclick=()=>{$('#appbar').remove();SND.close()}}
+  if(a.appbar){$('#appbar .open').onclick=()=>running&&fail('上の「アプリで開く」を押しました','上のアプリの案内は、右の小さな×で閉じる。');$('#appbar .shut').onclick=()=>{$('#appbar').remove();SND.close()}}
 }
-$('#anchor').onclick=e=>{if(e.target.closest('#fold')){$('#anchor').hidden=true;SND.close();return}if(running)fail('下に貼りついた広告を押しました')};
+$('#anchor').onclick=e=>{if(e.target.closest('#fold')){$('#anchor').hidden=true;SND.close();return}if(running)fail('下に貼りついた広告を押しました','下に貼りついた広告は、右上の小さな×で閉じる（閉じなくても読める）。')};
 
 function pickOrder(a){
   // その記事の難しさまでの種類から、重ならないように選ぶ。いちばん難しい段の種類を必ず1つ入れる
+  if(a.hard){const top=shuffle(Object.keys(TYPES).filter(t=>TYPES[t].lv===3)).slice(0,2), rest=Object.keys(TYPES).filter(t=>TYPES[t].lv>=2&&!top.includes(t));
+    return shuffle([...top,...shuffle(rest).slice(0,a.ads-2)])}
   const pool=Object.keys(TYPES).filter(t=>TYPES[t].lv<=a.lv);
   const must=rnd(pool.filter(t=>TYPES[t].lv===a.lv));
   return shuffle([must,...shuffle(pool.filter(t=>t!==must)).slice(0,a.ads-1)]);
 }
 
 function openAd(full){
-  inAd=true;page.classList.add('lock');stage.className=full?'full':'';stage.hidden=false;stage.innerHTML='';$('#panel').hidden=false;
+  inAd=true;page.classList.add('lock');stage.className=full?'full':'';stage.hidden=false;stage.innerHTML='';$('#panel').hidden=!!MODE.hard;
   const type=ORDER[n], T=TYPES[type], ad=el(T.html(rnd(PRODUCTS)));ad.dataset.type=type;stage.appendChild(ad);
   const w=document.createElement('div');w.className='hint';w.id='hintTxt';w.hidden=true;w.textContent='ヒント：'+T.hint;stage.appendChild(w);
   ad.addEventListener('click',e=>{const t=e.target;
@@ -341,13 +416,17 @@ function openAd(full){
   if(T.wire)T.wire(ad);
 }
 function win(){
-  if(!inAd)return;SND.close();toast('閉じた');
+  if(!inAd)return;SND.close();toast('閉じた');found(ORDER[n],!!used[n]);bump('closed');
   if(n===V){$('#p2').hidden=false;$('#nextBtn').hidden=true;page.scrollTop=$('#p2').offsetTop-70}
   n++;stage.className='';stage.innerHTML='';stage.hidden=true;$('#panel').hidden=true;inAd=false;page.classList.remove('lock');check();
 }
 // 読み進めて「関所」が画面の下のほうまで来たら、少し遅れて広告が出る（本物の広告も読み込みに一瞬かかる）
+function hud(){
+  const m=page.scrollHeight-page.clientHeight;$('#progBar').style.width=(running&&m>0?Math.min(100,page.scrollTop/m*100):0)+'%';
+  $('#cnt').textContent=running||inAd?'広告 '+Math.min(n,ORDER.length)+'/'+ORDER.length:'';
+}
 function check(){
-  if(!running||inAd||pend)return;
+  hud();if(!running||inAd||pend)return;
   const g=document.querySelector('.gate[data-i="'+n+'"]');
   if(g&&g.offsetParent!==null&&g.offsetTop<page.scrollTop+page.clientHeight*0.75){pend=setTimeout(()=>{pend=null;if(running&&!inAd)openAd()},700);return}
   if(n>=ORDER.length){const f=$('#fin');if(f.offsetTop+f.offsetHeight<=page.scrollTop+page.clientHeight+4)finish()}
@@ -355,10 +434,15 @@ function check(){
 page.addEventListener('scroll',check,{passive:true});
 
 function stop(){running=false;cancelAnimationFrame(raf);clearTimeout(pend);pend=null;inAd=false}
-function fail(why){stop();SND.virus();virus(why)}
+// 押してはいけない所を押した。何がちがったか・正しい閉じ方・どこまで読めたかを見せる
+function fail(why,how){
+  const m=page.scrollHeight-page.clientHeight, pct=m>0?Math.round(Math.min(1,page.scrollTop/m)*100):0;
+  if(!how)how=inAd&&TYPES[ORDER[n]]?'正しくは：'+TYPES[ORDER[n]].hint:'';
+  const left=ORDER.length-n;
+  stop();bump('virus');SND.virus();virus(why,`${how}<small>記事の ${pct}% まで読めた（残りの広告 ${left}枚）</small>`)}
 let viv=0;
-function virus(why){
-  const v=$('#virus');v.hidden=false;v.classList.remove('done');$('#vwhy').textContent=why;
+function virus(why,how){
+  const v=$('#virus');v.hidden=false;v.classList.remove('done');$('#vwhy').textContent=why;$('#vhow').innerHTML=how||'';$('#vhow').hidden=!how;
   const items=['写真','連絡先','検索履歴','メッセージ','位置情報','カレンダー'];
   const log=$('#vlog');log.textContent='';let p=0;clearInterval(viv);
   viv=setInterval(()=>{p+=7+Math.random()*9;$('#vbar').style.width=Math.min(p,100)+'%';
@@ -366,47 +450,114 @@ function virus(why){
     log.textContent=(log.textContent+'\nsending '+Math.random().toString(16).slice(2,10)+'.dat ... OK').split('\n').slice(-6).join('\n');
     if(p>=100){clearInterval(viv);setTimeout(()=>v.classList.add('done'),250)}},90);
 }
+function shareInfo(t){
+  const grid=ORDER.map((_,i)=>used[i]?'💡':'✅').join('');
+  if(MODE.kind==='daily'){const st=shownStreak();
+    return {grid,title:`今日の1本 #${MODE.day}`,url:`${baseUrl()}?d=${MODE.day}&t=${t.toFixed(1)}`,
+      text:`×はどこだ 今日の1本 #${MODE.day}\n${grid} ${fmt(t)}${st>1?`\n🔥${st}日連続`:''}\n#×はどこだ`}}
+  const idx=ARTICLES.indexOf(A), hd=MODE.hard?' 上級':'', md=medal(t,A,MODE.hard);
+  return {grid,title:`記事${idx+1}${hd}「${A.site}」`,url:`${baseUrl()}?a=${A.id}&t=${t.toFixed(1)}&s=${MODE.seed}${MODE.hard?'&h=1':''}`,
+    text:`×はどこだ 記事${idx+1}${hd}「${A.site}」\n${grid} ${fmt(t)} ${md}\n#×はどこだ`};
+}
 function finish(){
-  stop();SND.clear();const t=now();$('#clock').textContent=fmt(t);
-  const b=best(A.id), nb=!b||t<b;if(nb)store.set('xdoko-best-'+A.id,t.toFixed(1));
-  const idx=ARTICLES.indexOf(A), next=ARTICLES[idx+1];
-  const txt=`×はどこだ｜記事${idx+1}「${A.site}」\n広告${ORDER.length}枚をよけて ${fmt(t)}（ヒント${hints}回）\n#×はどこだ`;
+  stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
+  let b,nb;
+  if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
+    if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
+    if(d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
+  }else{const key='xdoko-best-'+A.id+(MODE.hard?'-h':'');b=Number(store.get(key)||0);nb=!b||t<b;if(nb)store.set(key,t.toFixed(1))}
+  bump('clear');
+  // 次へ：ふつうは次の記事。上級は、次の記事を読み切っていればその上級
+  const idx=ARTICLES.indexOf(A), nx=ARTICLES[idx+1], next=MODE.kind!=='article'?null:MODE.hard?(nx&&cleared(nx.id)?nx:null):nx;
+  const md=medal(t,A,MODE.hard), nm=nextMedal(t,A,MODE.hard);
+  const S=shareInfo(t), full=S.text+'\n'+S.url;
+  // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
+  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const box=el(`<div class="card"><h3>読み切った！</h3><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><div class="share" id="shareTxt"></div>
-   <div class="btns"><button class="big" id="copyBtn" type="button">結果をコピー</button>${next?'<button class="big btn2" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="toMenu" type="button">記事を選ぶ</button></div></div>`);
-  stage.appendChild(box);box.querySelector('#shareTxt').textContent=txt;
+  const st=MODE.kind==='daily'?shownStreak():0;
+  const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
+   <div class="share" id="shareTxt"></div>
+   <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
+   <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div></div>`);
+  stage.appendChild(box);box.querySelector('#shareTxt').textContent=full;
+  box.querySelector('#xBtn').href='https://x.com/intent/post?text='+encodeURIComponent(S.text)+'&url='+encodeURIComponent(S.url);
+  box.querySelector('#lineBtn').href='https://line.me/R/share?text='+encodeURIComponent(full);
+  const sb=box.querySelector('#shareBtn');if(sb)sb.onclick=()=>navigator.share({text:S.text,url:S.url}).catch(()=>{});
   box.querySelector('#copyBtn').onclick=()=>{const sel=()=>{const r=document.createRange();r.selectNodeContents(box.querySelector('#shareTxt'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選んだので、コピーしてね')};
-    try{navigator.clipboard.writeText(txt).then(()=>toast('コピーした')).catch(sel)}catch(e){sel()}};
-  if(next)box.querySelector('#nextArt').onclick=()=>start(next);
+    try{navigator.clipboard.writeText(full).then(()=>toast('コピーした')).catch(sel)}catch(e){sel()}};
+  if(next)box.querySelector('#nextArt').onclick=()=>start(next,{kind:'article',hard:!!MODE.hard});
+  box.querySelector('#againRun').onclick=()=>start(A,again());
   box.querySelector('#toMenu').onclick=menu;
 }
-function start(a){
-  stop();A=a;n=0;hints=0;pen=0;ORDER=pickOrder(a);$('#virus').hidden=true;$('#panel').hidden=true;
-  build();page.scrollTop=0;$('#clock').textContent=fmt(0);
+// mode：{kind:'article',seed} ふつう（seed で並びを決め、挑戦状のリンクに入れる）／{kind:'daily',day} 今日の1本（日の番号で乱数を決める）／rival があれば挑戦状
+const newSeed=()=>1+Math.floor(Math.random()*2147483646);
+const okSeed=s=>Number.isInteger(s)&&s>=1&&s<2147483647;
+// もう一度：今日の1本と挑戦状は同じ並び、ふつうの記事は新しい並び
+const again=()=>MODE.kind==='article'&&!MODE.rival?{kind:'article',hard:!!MODE.hard}:MODE;
+function start(a,mode={kind:'article'}){
+  if(mode.kind==='article'&&!okSeed(mode.seed))mode={...mode,seed:newSeed()};
+  stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];
+  R=seeded(mode.kind==='daily'?mode.day:mode.seed);
+  ORDER=pickOrder(cfg());$('#virus').hidden=true;$('#panel').hidden=true;
+  build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const box=el(`<div class="card"><h3>記事${ARTICLES.indexOf(a)+1}</h3><p><b>${a.site}</b></p><p>最後まで読めばゴール。広告は${a.ads}枚。<br>本物の×だけを押そう。</p>
-   <button class="big" id="go" type="button">スタート</button><p class="total">${best(a.id)?'ベスト '+fmt(best(a.id)):'タイムアタック'}</p></div>`);
+  const label=mode.kind==='daily'?`今日の1本 #${mode.day}`:`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
+  const b=mode.kind==='daily'?dBest(mode.day):mode.hard?bestH(a.id):best(a.id);
+  const box=el(`<div class="card"><h3>${label}</h3><p><b>${a.site}</b></p>${mode.rival?`<div class="letter">挑戦状：相手のタイムは <b>${fmt(mode.rival)}</b></div>`:''}<p>最後まで読めばゴール。広告は${cfg().ads}枚。${mode.hard?'<br><b style="color:var(--hot)">上級：難しい広告だけが出る。ヒントは使えない。</b>':''}<br>本物の×だけを押そう。</p>${mode.kind==='daily'?'<p class="total">今日はだれが遊んでも同じ広告の並び</p>':''}
+   <button class="big" id="go" type="button">スタート</button><p class="total">${b?'ベスト '+fmt(b)+' '+medal(b,a,mode.hard):'タイムアタック'}　金は ${fmt(goldOf(a,mode.hard))} 以内</p></div>`);
   stage.appendChild(box);
   box.querySelector('#go').onclick=()=>{stage.innerHTML='';stage.hidden=true;page.classList.remove('lock');running=true;t0=performance.now();tick();SND.close();check()};
   page.classList.add('lock');
 }
 function menu(){
-  stop();$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);
+  stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
   stage.className='menu';stage.hidden=false;stage.innerHTML='';
-  const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0);
+  const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
-   <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}</span></button>`}).join('')}</div>
+   <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
+   <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}<small>みんな同じ広告の並び${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
+   <p class="sec">記事を順に読む</p>
+   <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
+   <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
+   <div class="levels">${ARTICLES.map((a,i)=>{const lock=!cleared(a.id);return `<button class="lv hard" type="button" data-h="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'ふつうで読み切ると開く':'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`}).join('')}</div>
    <p class="total">${all?'3本の合計ベスト '+fmt(sum):'3本読み切ると合計タイムが出ます'}</p>
-   <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 14px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button></div>`);
+   <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・記録</button>
+   <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button>
+   <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
   stage.appendChild(box);
-  box.querySelectorAll('.lv').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
+  box.querySelector('#dailyBtn').onclick=()=>start(dailyArt(d),{kind:'daily',day:d});
+  box.querySelectorAll('.lv[data-i]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
+  box.querySelectorAll('.lv[data-h]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.h],{kind:'article',hard:true})});
+  box.querySelector('#dexBtn').onclick=showDex;
   box.querySelector('#menuSound').onclick=e=>{$('#soundBtn').click();e.currentTarget.textContent=soundOn?'🔊 音あり':'🔇 音なし'};
   page.classList.add('lock');
 }
-$('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(h&&h.hidden){h.hidden=false;hints++;pen+=5;toast('+5秒')}};
-$('#againBtn').onclick=()=>start(A);
+// 広告図鑑：閉じたことのある広告の名前と閉じ方。まだの広告は難しさだけ見せる。下に記録
+function showDex(){
+  stop();stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  const d=dex(), st=stats(), ks=Object.keys(TYPES), got=ks.filter(k=>d[k]).length, s=streak();
+  const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
+  const box=el(`<div class="card"><h3>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}</p>
+   <div class="dex">${ks.map(k=>{const T=TYPES[k],e=d[k],star='★'.repeat(T.lv);return e?`<div><b>${T.name} <small>${star}</small></b>${T.hint}<br><small>閉じた ${e.n}回${e.clean?'・ヒントなしで閉じた':''}</small></div>`:`<div class="no"><b>？？？ <small>${star}</small></b>まだ出会っていない</div>`}).join('')}</div>
+   <p class="sec">記録</p>
+   <div class="stats"><span>読み切った<b>${st.clear||0}回</b></span><span>閉じた広告<b>${st.closed||0}枚</b></span><span>感染した<b>${st.virus||0}回</b></span><span>連続の最高<b>${s.max||0}日</b></span><span style="grid-column:1/-1">メダル<b>🥇${medals['🥇']||0}　🥈${medals['🥈']||0}　🥉${medals['🥉']||0}</b></span></div>
+   <button class="big" id="dexBack" type="button">メニューへ</button></div>`);
+  stage.appendChild(box);box.querySelector('#dexBack').onclick=menu;page.classList.add('lock');
+}
+// 挑戦状のリンク（?d=日の番号&t=秒 か ?a=記事&t=秒）で開いたら、その場で挑戦できるようにする
+function fromLink(){
+  let q;try{q=new URLSearchParams(location.search)}catch(e){return false}
+  const t=Number(q.get('t')), rival=t>0&&t<10000?Math.round(t*10)/10:0;
+  const d=Number(q.get('d')), a=ARTICLES.find(x=>x.id===q.get('a')), seed=Number(q.get('s'));
+  try{if(q.has('d')||q.has('a'))history.replaceState(null,'',location.pathname)}catch(e){}
+  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),{kind:'daily',day:d,rival});return true}
+  if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0,hard:q.get('h')==='1'});return true}
+  return false;
+}
+$('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(h&&h.hidden){h.hidden=false;hints++;pen+=5;used[n]=true;toast('+5秒')}};
+$('#againBtn').onclick=()=>start(A,again());
 $('#menuBtn').onclick=menu;
-menu();
+if(!fromLink())menu();
 </script>
 <script>
 // ホーム画面に追加したとき、電波が無くても遊べるように保存する（https か手元の検査のときだけ。外へは何も送らない）
