@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>×はどこだ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#f3f5f8">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="description" content="広告をよけて記事を最後まで読むタイムアタック。本物の×だけを押そう。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap">
+<style>
+/* Layout: 本物のサイトのような記事ページ。読み進めると広告がふさぐ。単一テーマ（昼のサイト）で固定 */
+:root{
+  --paper:#f3f5f8; --card:#ffffff; --ink:#1d2433; --muted:#6b7385; --line:#d7dce5;
+  --ad:#fff6a8; --adink:#2a1a00; --hot:#e8305f; --ok:#18a058; --sky:#2f62e6;
+  --site:#2f62e6;
+  --display:"Dela Gothic One","Hiragino Sans","Yu Gothic",sans-serif;
+  --body:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);overflow:hidden;margin:0}
+button{font-family:var(--body)}
+button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+
+#page{position:fixed;inset:0;overflow-y:auto;overscroll-behavior:contain;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 160px}
+#page.lock{overflow:hidden}
+.top{position:sticky;top:0;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:8px;padding-block:10px;background:var(--paper);border-bottom:1px solid var(--line)}
+.logo{font-family:var(--display);font-size:18px}
+.logo b{color:var(--hot)}
+.topr{display:flex;align-items:center;gap:10px}
+.clock{font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums;min-width:4.5em;text-align:right}
+.icon{border:1px solid var(--line);background:var(--card);border-radius:999px;width:34px;height:34px;cursor:pointer;font-size:15px}
+
+.article{max-width:620px;margin:0 auto;font-size:15px;line-height:1.9;color:#3a4254}
+.sitebar{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-weight:800;color:var(--site);font-size:14px}
+.sitebar i{width:22px;height:22px;border-radius:6px;background:var(--site);display:inline-block}
+.crumb{font-size:12px;color:var(--muted)}
+.article h2{font-size:22px;line-height:1.45;color:var(--ink);margin:6px 0 4px;text-wrap:balance}
+.meta{font-size:12px;color:var(--muted);margin-bottom:14px}
+.article h4{color:var(--ink);font-size:17px;margin:28px 0 8px}
+.article p{margin:0 0 16px}
+.photo{height:190px;border-radius:8px;display:grid;place-items:center;font-size:68px;margin:0 0 14px;background:var(--ph,linear-gradient(135deg,#ffe2b8,#ffd0d8))}
+.gate{height:1px}
+.nextpage{display:block;width:100%;margin:14px 0 30px;padding:14px;border:2px solid var(--site);border-radius:8px;color:var(--site);background:var(--card);font:800 15px var(--body);cursor:pointer}
+.fin{text-align:center;color:var(--muted);padding:36px 0;font-weight:700}
+.fin b{display:block;font-family:var(--display);font-size:22px;color:var(--ink)}
+
+.inad{position:relative;display:flex;gap:12px;align-items:center;margin:4px 0 22px;padding:12px;border:1px solid var(--line);background:var(--card);border-radius:6px;cursor:pointer;color:var(--ink);font-weight:700;font-size:14px;line-height:1.5}
+.inad .pic{flex:0 0 64px;height:64px;border-radius:4px;display:grid;place-items:center;font-size:30px;background:var(--ad)}
+.inad small{position:absolute;right:6px;top:2px;font-size:10px;color:var(--muted);font-weight:400}
+.inad span{min-width:0}
+.anchor{position:fixed;left:0;right:0;bottom:0;z-index:3;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -2px 8px rgba(0,0,0,.12);
+  display:flex;align-items:center;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));font-weight:800;font-size:14px;cursor:pointer}
+.anchor .pic{flex:0 0 44px;height:44px;border-radius:4px;display:grid;place-items:center;font-size:22px;background:var(--hot);color:#fff}
+.anchor .fold{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:-26px;width:32px;height:26px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;background:var(--card);font-size:17px;font-weight:800;color:var(--muted);cursor:pointer}
+.appbarSlot,#appbarSlot{position:sticky;top:55px;z-index:2}
+.appbar{display:flex;align-items:center;gap:10px;margin:0 calc(-1 * max(16px,env(safe-area-inset-left,0px)));padding:8px max(16px,env(safe-area-inset-left,0px));background:#eef2ff;border-bottom:1px solid var(--line);font-size:13px;font-weight:700}
+.appbar .open{margin-left:auto;background:var(--site);color:#fff;border:0;border-radius:999px;padding:6px 14px;font-weight:800;cursor:pointer}
+.appbar .shut{border:0;background:transparent;font-size:16px;color:var(--muted);cursor:pointer;padding:4px}
+
+#stage{position:fixed;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(20,24,35,.38);touch-action:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#stage.full{background:#11131a}
+#stage.full::before{content:"広告";position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));color:#9aa3b5;font-size:12px}
+#stage.menu{background:var(--paper);touch-action:auto;overflow-y:auto;justify-content:flex-start;padding-block:24px}
+.ad{position:relative;box-sizing:border-box;width:min(100%,340px);background:var(--ad);color:var(--adink);border:3px solid var(--adink);border-radius:6px;box-shadow:6px 6px 0 var(--adink);padding:22px 16px 16px;text-align:center;font-weight:800;animation:pop .2s ease-out}
+.ad h3{font-family:var(--display);font-size:24px;line-height:1.3;margin:4px 0 8px;color:var(--hot);text-wrap:balance}
+.ad p{margin:6px 0;font-size:14px;line-height:1.6}
+.ad .tag{position:absolute;left:6px;top:4px;font-size:10px;opacity:.65}
+.big{display:inline-block;margin-top:10px;background:var(--hot);color:#fff;border:0;border-radius:999px;padding:12px 22px;font:800 16px var(--body);cursor:pointer}
+.x{position:absolute;border:0;background:transparent;color:var(--adink);font:800 18px var(--body);cursor:pointer;line-height:1;padding:6px}
+.scroll{max-height:150px;overflow-y:auto;text-align:left;font-size:12px;font-weight:400;border:1px dashed var(--adink);padding:8px;background:#fffbd8;touch-action:pan-y}
+.pict{position:relative;font-size:64px;line-height:1.2;margin:6px 0;user-select:none}
+.sys{box-sizing:border-box;width:min(100%,330px);background:#fff;color:#202124;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);padding:18px;text-align:left;font-size:14px;animation:pop .2s ease-out}
+.sys .row{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.sys .row button{border:1px solid #c9ced8;background:#fff;color:#1a56d6;border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer}
+.sys .row .prim{background:#1a56d6;color:#fff;border-color:#1a56d6}
+.video{box-sizing:border-box;width:min(100%,360px);background:#000;color:#fff;border-radius:8px;overflow:hidden;animation:pop .2s ease-out;position:relative}
+.video .scr{height:200px;display:grid;place-items:center;font-size:64px;background:linear-gradient(135deg,#283a7a,#7a2860)}
+.video .bar{height:4px;background:#444}.video .bar i{display:block;height:100%;width:0;background:#ffcc00}
+.video .ctl{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-size:13px;gap:8px}
+.video .skip{border:1px solid #fff;background:rgba(0,0,0,.6);color:#fff;padding:8px 12px;font-weight:700;cursor:pointer;border-radius:2px}
+.video .skip[disabled]{opacity:.6;cursor:default}
+.video .buy{background:#ffcc00;color:#000;border:0;border-radius:4px;padding:8px 12px;font-weight:800;cursor:pointer}
+
+.hint{font-size:13px;color:#fff;text-shadow:0 1px 2px #000;text-align:center;max-width:320px}
+.panel{position:fixed;left:0;right:0;bottom:70px;display:flex;justify-content:center;z-index:5}
+.panel button{background:#fff;color:var(--ink);border:2px solid var(--ink);border-radius:999px;padding:8px 16px;font:700 14px var(--body);cursor:pointer}
+.say{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:var(--ok);color:#fff;padding:8px 16px;border-radius:12px;font-size:14px;font-weight:700;z-index:6;transition:opacity .3s;pointer-events:none}
+
+.card{box-sizing:border-box;background:var(--card);color:var(--ink);border:3px solid var(--ink);border-radius:12px;padding:22px 18px;width:min(100%,380px);text-align:center;box-shadow:6px 6px 0 var(--ink);animation:pop .2s ease-out}
+.card h3{font-family:var(--display);font-size:28px;margin:0 0 8px}
+.card h3 b{color:var(--hot)}
+.card p{margin:6px 0;font-size:14px;line-height:1.7}
+.levels{display:flex;flex-direction:column;gap:10px;margin:14px 0 4px}
+.lv{display:flex;align-items:center;gap:12px;text-align:left;border:2px solid var(--ink);border-radius:10px;background:var(--paper);padding:10px 12px;cursor:pointer;font:700 14px var(--body);color:var(--ink)}
+.lv[disabled]{opacity:.45;cursor:default}
+.lv .n{font-family:var(--display);font-size:20px;color:var(--hot);width:1.4em}
+.lv .t{flex:1;min-width:0}
+.lv small{display:block;color:var(--muted);font-weight:400}
+.lv .bt{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
+.share{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;text-align:left;white-space:pre-wrap;margin:12px 0}
+.btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.btn2{background:var(--ink)}
+.total{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+#virus{position:fixed;inset:0;z-index:20;background:#0a0000;color:#ff3030;font-family:ui-monospace,Menlo,Consolas,monospace;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;text-align:center;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px;overflow:hidden}
+#virus .warn{font-size:13px;letter-spacing:.2em;animation:blink .5s steps(2) infinite}
+#virus h2{font-family:var(--display);font-size:clamp(26px,8vw,40px);margin:0;color:#ff3030;text-shadow:3px 0 #00e5ff,-3px 0 #ff00aa;animation:glitch .25s steps(2) infinite}
+#virus .bar{width:min(80vw,320px);height:14px;border:1px solid #ff3030}
+#virus .bar i{display:block;height:100%;width:0;background:#ff3030}
+#virus .log{font-size:12px;color:#ff8080;height:96px;overflow:hidden;width:min(86vw,340px);text-align:left;white-space:pre}
+#virus .over{display:none;flex-direction:column;gap:8px;align-items:center;color:#fff}
+#virus .over b{font-family:var(--display);font-size:34px;color:#fff}
+#virus .over .big{background:#fff;color:#0a0000}
+#virus .over .btn2{background:transparent;color:#fff;border:1px solid #fff}
+#virus.done .over{display:flex}
+#virus.done .scare{display:none}
+#virus .noise{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,0,0,.08) 0 2px,transparent 2px 4px);animation:scan .2s linear infinite}
+
+@keyframes pop{from{transform:scale(.88);opacity:.3}to{transform:scale(1);opacity:1}}
+@keyframes blink{50%{opacity:0}}
+@keyframes glitch{50%{transform:translate(2px,-1px) skewX(-6deg)}}
+@keyframes scan{to{background-position:0 4px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="top"><div class="logo"><b>×</b>はどこだ</div><div class="topr"><button class="icon" id="soundBtn" type="button" aria-label="音を切る">🔊</button><div class="clock" id="clock">0.0秒</div></div></div>
+  <div id="appbarSlot"></div>
+  <div class="article" id="art"></div>
+</div>
+<div id="stage"></div>
+<div class="anchor" id="anchor" hidden><button class="fold" id="fold" type="button" aria-label="広告を閉じる">×</button><div class="pic" aria-hidden="true">P</div><span id="anchorTxt"></span></div>
+<div class="panel" id="panel" hidden><button id="hintBtn" type="button">ヒント（+5秒）</button></div>
+<div class="say" id="say" style="opacity:0"></div>
+<div id="virus" hidden><div class="noise"></div>
+  <div class="scare"><div class="warn">⚠ SYSTEM ALERT ⚠</div><h2>ウイルスに感染しました</h2>
+    <p id="vmsg">あなたの端末から 写真 を送信しています…</p><div class="bar"><i id="vbar"></i></div><div class="log" id="vlog"></div></div>
+  <div class="over"><b>GAME OVER</b><p id="vwhy"></p><p style="font-size:12px;opacity:.7">※ゲームの画面です。実際の端末には何も起きていません。</p>
+    <div class="btns"><button class="big" id="againBtn" type="button">もう一度</button><button class="big btn2" id="menuBtn" type="button">記事を選ぶ</button></div></div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const stage=$('#stage'), page=$('#page'), say=$('#say');
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild}
+let toastT;function toast(t){say.textContent=t;say.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>say.style.opacity=0,900)}
+
+/* ---------- 音（ボタンを押したあとだけ鳴る。外へは何も送らない） ---------- */
+let ac=null, soundOn=store.get('xdoko-sound')!=='off';
+function tone(f,d,type='sine',v=.12,slide=0){if(!soundOn)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;if(slide)o.frequency.linearRampToValueAtTime(f+slide,ac.currentTime+d);g.gain.value=v;g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+const SND={close:()=>tone(880,.08,'triangle'),clear:()=>{tone(660,.12);setTimeout(()=>tone(990,.2),120)},
+  virus:()=>{tone(120,.8,'sawtooth',.15,-60);setTimeout(()=>tone(90,.8,'square',.08),200)},video:()=>tone(330,.3,'square',.05)};
+function setSound(){$('#soundBtn').textContent=soundOn?'🔊':'🔇';$('#soundBtn').setAttribute('aria-label',soundOn?'音を切る':'音を出す')}
+$('#soundBtn').onclick=()=>{soundOn=!soundOn;store.set('xdoko-sound',soundOn?'on':'off');setSound()};setSound();
+
+/* ---------- 広告の中身（すべて架空の商品） ---------- */
+const PRODUCTS=[['頭皮ケアの新習慣','初回980円','定期コースはいつでも解約OK','詳しく見る'],['腰がラクになるマットレス','今だけ半額','送料無料・100日おためし','商品を見る'],
+ ['軽量ランニングシューズ','新色入荷','送料無料・返品OK','今すぐ購入'],['英会話アプリ','7日間無料','1日10分から始められる','無料で始める'],
+ ['新築分譲住宅','モデルハウス公開中','駅から徒歩8分','来場予約する'],['格安SIM','月額990円から','事務手数料0円','お申し込み'],
+ ['車の買取査定','最短30秒','電話なしで相場がわかる','無料で査定する'],['電動歯ブラシ','30%オフ','歯科医と共同開発','セールを見る'],
+ ['オンライン家庭教師','初月無料','現役大学生が担当','体験を申し込む'],['ウォーターサーバー','サーバー代0円','ボトル2本プレゼント','申し込む']];
+const INADS=[['💳','【PR】年会費無料のクレジットカード 今なら5,000ポイント'],['🚚','【PR】引っ越し見積もり 最大50%オフ'],['📱','【PR】スマホの下取り 高額査定キャンペーン'],
+ ['👓','【PR】メガネ 2本目半額'],['🧴','【PR】敏感肌向け保湿クリーム お試しセット'],['🚗','【PR】車の保険 見直すだけで平均3万円おトク'],['🏨','【PR】温泉宿 平日限定 40%オフ'],['📚','【PR】資格の通信講座 資料請求で特典']];
+const ANCHORS=['【期間限定】初回購入で1,000ポイントプレゼント','【PR】ふるさと納税 今年の締め切りはお早めに','【PR】動画見放題 30日間無料'];
+const head=p=>`<h3>${p[0]}<br>${p[1]}</h3><p>${p[2]}</p>`;
+
+/* ---------- ふさぐ広告の種類。real を押すと閉じる。fake・big を押すとゲームオーバー ---------- */
+const TYPES={
+ corner:{lv:1,hint:'右上の小さい×。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><button class="x real" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big">${p[3]}</button></div>`},
+ bigfake:{lv:1,hint:'大きい×はボタン。本物は下の小さな文字。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><button class="big fake" style="position:absolute;right:-14px;top:-18px;padding:8px 14px;font-size:22px;margin:0">×</button>${head(p)}<button class="big">${p[3]}</button>
+   <button class="x real" style="left:50%;bottom:-2px;transform:translateX(-50%);font-size:9px;opacity:.55" aria-label="閉じる">閉じる</button></div>`},
+ outside:{lv:1,hint:'枠の外にある×。枠の中の ⓘ は広告の説明。',
+  html:p=>`<div class="ad" style="margin-top:26px"><button class="x real" style="right:-6px;top:-34px;background:#fff;border-radius:50%;width:28px;height:28px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.3)" aria-label="閉じる">×</button>
+   <button class="x fake" style="right:4px;top:2px;font-size:14px" aria-label="広告について">ⓘ</button><span class="tag">広告</span>${head(p)}<button class="big">${p[3]}</button></div>`},
+ label:{lv:1,hint:'「広告」の横の小さな文字。',
+  html:p=>`<div class="ad"><span class="tag real" role="button" tabindex="0" style="cursor:pointer" aria-label="閉じる">広告　広告を閉じる</span><button class="x fake" style="right:4px;top:2px">×</button>${head(p)}<button class="big fake">${p[3]}</button></div>`},
+ three:{lv:1,hint:'×が3つ。本物は1つだけ。',
+  html:p=>{const r=Math.floor(Math.random()*3);const order=[0,1,2].map(i=>i===r?'×':rnd(['✕','Χ','⨉']));
+   return `<div class="ad"><span class="tag">広告</span>${order.map((c,i)=>`<button class="x ${i===r?'real':'fake'}" style="right:${4+i*30}px;top:2px"${i===r?' aria-label="閉じる"':''}>${c}</button>`).join('')}${head(p)}<button class="big">${p[3]}</button></div>`}},
+ rate:{lv:1,hint:'「あとで」を押す。',
+  html:p=>`<div class="sys"><b>このサイトを評価してください</b><p style="margin:8px 0 0;font-size:22px;letter-spacing:4px">☆☆☆☆☆</p><p style="margin:6px 0 0;color:#5f6368;font-size:13px">評価するとアプリの限定クーポンがもらえます</p>
+   <div class="row"><button class="real" aria-label="閉じる">あとで</button><button class="prim fake">評価してクーポンをもらう</button></div></div>`},
+ shift:{lv:2,hint:'画像が読み込まれると×がずれる。止まってから押す。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><button class="x real run" style="right:4px;top:2px;transition:all .25s" aria-label="閉じる">×</button>${head(p)}<button class="big">${p[3]}</button></div>`,
+  wire(ad){let k=0,block=false;const x=ad.querySelector('.run');
+   const spots=[{left:'4px',right:'auto',top:'2px',bottom:'auto'},{left:'auto',right:'4px',top:'auto',bottom:'2px'},{left:'4px',right:'auto',top:'auto',bottom:'2px'}];
+   x.addEventListener('pointerdown',()=>{block=false;if(k>=3)return;Object.assign(x.style,spots[k]);k++;block=true},true);
+   x.addEventListener('click',e=>{if(block){block=false;e.stopImmediatePropagation()}},true)}},
+ terms:{lv:2,hint:'注意事項のいちばん下に閉じるボタンがある。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><h3>アンケートに答えて<br>ポイントGET</h3>
+   <div class="scroll">【注意事項】<br>・お一人様1回限りです。<br>・ポイントの付与には最大60日かかります。<br>・回答内容によっては対象外となる場合があります。<br>・ポイントの有効期限は付与から180日です。<br>・詳しくは利用規約をご確認ください。<br><button class="x real" style="position:static;font-size:13px;text-decoration:underline" aria-label="閉じる">広告を閉じる</button></div>
+   <button class="big fake">同意して回答する</button></div>`},
+ picx:{lv:2,hint:'画像の中の×は絵。本物は右上のうすい×。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><h3>${p[0]}<br>${p[1]}</h3><div class="pict" aria-hidden="true">🎁<button class="x fake" style="right:22%;top:0;font-size:20px;background:#fff;border-radius:50%;width:30px;height:30px;padding:0">×</button></div>
+   <button class="x real" style="right:4px;top:2px;color:#d8c860" aria-label="閉じる">×</button><button class="big fake">${p[3]}</button></div>`},
+ confirm:{lv:2,hint:'×を押すと確認が出る。「閉じる」を選ぶ。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button><h3>今だけ使える<br>500円クーポン</h3><p>本日23:59まで</p><button class="big fake first">クーポンを受け取る</button>
+   <div class="cf" hidden><p>本当に閉じますか？クーポンは失効します。</p><button class="big fake">クーポンを受け取る</button><br><button class="x real" style="position:static;font-size:12px;opacity:.7" aria-label="閉じる">閉じる</button></div></div>`,
+  wire(ad){const x=ad.querySelector('.nest');x.onclick=()=>{ad.querySelector('.cf').hidden=false;ad.querySelector('.first').hidden=true;x.hidden=true}}},
+ app:{lv:2,hint:'アプリには行かない。小さな「ブラウザで続ける」。',
+  html:p=>`<div class="sys" style="text-align:center"><div style="font-size:40px">📲</div><b>アプリなら記事がもっと快適に</b><p style="color:#5f6368;font-size:13px;margin:6px 0 0">広告なし・オフラインで読める</p>
+   <button class="big fake" style="background:#1a56d6;width:100%">アプリで開く（おすすめ）</button><br><button class="real" style="border:0;background:none;color:#5f6368;font-size:12px;margin-top:10px;cursor:pointer;text-decoration:underline" aria-label="閉じる">ブラウザで続ける</button></div>`},
+ countdown:{lv:3,hint:'秒数が終わると×が出る。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><span class="cd" style="position:absolute;right:8px;top:6px;font-size:11px">5秒後に閉じられます</span><button class="x real" style="right:4px;top:2px" hidden aria-label="閉じる">×</button>${head(p)}<button class="big fake">${p[3]}</button></div>`,
+  wire(ad){let c=5;const cd=ad.querySelector('.cd'),x=ad.querySelector('.real');const iv=setInterval(()=>{if(!ad.isConnected)return clearInterval(iv);c--;if(c<=0){clearInterval(iv);cd.hidden=true;x.hidden=false}else cd.textContent=c+'秒後に閉じられます'},1000)}},
+ video:{lv:3,hint:'5秒たつと「スキップ」が押せる。',
+  html:p=>`<div class="video"><div class="scr" aria-hidden="true">🎬</div><div class="bar"><i></i></div><div class="ctl"><span>広告・${p[0]}</span><button class="buy fake">${p[3]}</button></div>
+   <div class="ctl" style="justify-content:flex-end;padding-top:0"><button class="skip" disabled>広告をスキップ（5）</button></div></div>`,
+  wire(ad){let c=5;const s=ad.querySelector('.skip'),b=ad.querySelector('.bar i');SND.video();b.style.transition='width 8s linear';requestAnimationFrame(()=>requestAnimationFrame(()=>b.style.width='100%'));
+   const iv=setInterval(()=>{if(!ad.isConnected)return clearInterval(iv);c--;if(c<=0){clearInterval(iv);s.disabled=false;s.textContent='スキップ ›';s.classList.add('real');s.setAttribute('aria-label','閉じる')}else s.textContent='広告をスキップ（'+c+'）'},1000)}},
+ notify:{lv:3,hint:'通知は「ブロック」。',
+  html:p=>`<div class="sys"><b>このサイトが通知の送信を求めています</b><p style="margin:8px 0 0;color:#5f6368;font-size:13px">「許可」を押すと、最新のお得情報をお届けします</p>
+   <div class="row"><button class="real" aria-label="閉じる">ブロック</button><button class="prim fake">許可</button></div></div>`},
+ swipe:{lv:3,hint:'×は無い。上か横にスワイプして閉じる。',
+  html:p=>`<div class="ad drag" style="cursor:grab"><span class="tag">広告</span>${head(p)}<button class="big fake">${p[3]}</button><p style="font-size:11px;font-weight:400;margin-top:10px">↑ スワイプして記事に戻る</p></div>`,
+  wire(ad){let sx,sy,on=false;ad.addEventListener('pointerdown',e=>{if(e.target.closest('.big'))return;on=true;sx=e.clientX;sy=e.clientY;try{ad.setPointerCapture(e.pointerId)}catch(_){}ad.style.animation='none'});
+   ad.addEventListener('pointermove',e=>{if(!on)return;ad.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`});
+   const up=e=>{if(!on)return;on=false;const d=Math.hypot(e.clientX-sx,e.clientY-sy);ad.style.transition='transform .2s';if(d>Math.min(window.innerWidth,400)*0.35){ad.style.transform+=' scale(.2)';setTimeout(win,200)}else{ad.style.transform='';setTimeout(()=>ad.style.transition='',220)}};
+   ad.addEventListener('pointerup',up);ad.addEventListener('pointercancel',up)}},
+ chain:{lv:3,hint:'閉じたあと、下からもう1枚出てくる。',
+  html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big fake first">${p[3]}</button>
+   <div class="cf" hidden style="border-top:2px dashed var(--adink);margin-top:10px;padding-top:8px"><p>こちらもおすすめ</p><p style="font-size:13px">${rnd(PRODUCTS)[0]}</p><button class="big fake">見てみる</button><br><button class="x real" style="position:static;font-size:16px" aria-label="閉じる">× 閉じる</button></div></div>`,
+  wire(ad){const x=ad.querySelector('.nest');x.onclick=()=>{SND.close();ad.querySelector('.cf').hidden=false;ad.querySelector('.first').hidden=true;x.hidden=true;ad.querySelector('h3').hidden=true}}},
+};
+
+/* ---------- 記事（3本）。すべて架空のサイト ---------- */
+const ARTICLES=[
+ {id:'recipe',site:'まいにちごはん帖',color:'#d0661f',ph:'linear-gradient(135deg,#ffe2b8,#ffd0d8)',crumb:'ホーム › 献立',title:'冷蔵庫の残りで作る 1週間の晩ごはん',meta:'2026年11月3日 更新',
+  ads:4,lv:1,vignette:false,anchor:true,
+  secs:[['','「今日なに作ろう」を考えるのが、いちばん疲れる。そんな人のために、残り物だけで回す1週間の献立をまとめました。|使うのは、どこの冷蔵庫にもありそうなものばかり。特別な道具もいりません。'],
+   ['月曜：ふわふわ卵の甘辛丼','🍳','卵3個と玉ねぎ半分。しょうゆとみりんで玉ねぎを煮て、卵を2回に分けて流すと、ふわふわになります。|火を止めてから、ふたをして1分。余熱で半熟に仕上げるのがコツです。'],
+   ['火曜：キャベツの芯のきんぴら','🥬','捨てがちな芯を細切りに。ごま油で炒めて、しょうゆと砂糖で甘辛く。|シャキシャキが残るくらいで火を止めます。'],
+   ['水曜：ちくわの磯辺焼き','🍢','青のりを混ぜた衣をつけて、多めの油で焼くだけ。|冷めてもおいしいので、お弁当にもそのまま入ります。'],
+   ['木曜：残りごはんのチーズリゾット','🧀','冷やごはんに牛乳とコンソメ。弱火でとろっとさせます。|火を止めてからチーズを入れ、黒こしょうをたっぷり。'],
+   ['金曜：もやしのナムル','🌱','ゆでたもやしを、ごま油・塩・にんにく少しで和えるだけ。|3分で一品。ゆですぎないのがシャキッと仕上げるコツです。'],
+   ['土曜：鶏むね肉のレンジ蒸し','🍗','フォークで穴をあけ、砂糖と塩をもみこんで、ラップしてレンジで5分。|そのまま5分おくと、しっとり仕上がります。'],
+   ['日曜：残り物のおつまみ盛り','🍱','1週間がんばったので、日曜は残り物を全部並べて小皿に盛るだけ。|それでいいんです。'],
+   ['まとめ','','献立は「考えない仕組み」を作ると楽になります。来週もこの表を使い回してください。']]},
+ {id:'travel',site:'週末ふらり旅',color:'#1f8a70',ph:'linear-gradient(135deg,#bfe9dc,#cfe0ff)',crumb:'ホーム › 国内 › 港町',title:'港町で過ごす1泊2日 ゆっくり歩くモデルコース',meta:'2026年10月28日 公開',
+  ads:6,lv:2,vignette:true,anchor:true,
+  secs:[['','電車で2時間ほどの港町へ。坂道と海が近い町を、のんびり歩いて回るコースを紹介します。|移動は徒歩とバスだけ。歩きやすい靴で出かけましょう。'],
+   ['1日目 10:00 駅前の朝市','🐟','駅を出てすぐの朝市は、地元の干物や野菜が並びます。|味見をさせてくれるお店も多く、歩くだけで楽しい場所です。'],
+   ['11:30 坂の上の展望台','⛰️','朝市から歩いて20分。少し息が上がりますが、港を一望できます。|ベンチがあるので、ひと休みにちょうどいいです。'],
+   ['13:00 海鮮丼でお昼','🍣','港のそばの食堂で、その日に揚がった魚の丼を。|昼どきは混むので、少し早めに入るのがおすすめです。'],
+   ['15:00 古い倉庫街','🏚️','れんがの倉庫を改装した雑貨店やカフェが並びます。|夕方は西日がきれいで、写真を撮る人が多い時間です。'],
+   ['18:00 宿にチェックイン','🏨','海が見える小さな宿へ。夕食は地元の魚を使った料理が中心です。|部屋数が少ないので、予約は早めに。'],
+   ['2日目 7:00 朝の港を散歩','🌅','漁船が戻ってくる時間の港は、にぎやかで活気があります。|朝ごはんの前に、ぐるっと一周してみましょう。'],
+   ['9:30 遊覧船','⛴️','30分ほどで港の外まで回る船です。|風が強い日は欠航することがあるので、当日の案内を確かめてください。'],
+   ['11:00 灯台まで歩く','🗼','海沿いの遊歩道を40分。途中に小さな浜があります。|灯台の中は、週末だけ見学できます。'],
+   ['13:00 おみやげ選び','🎁','駅前の商店街で、干物や焼き菓子を。|日持ちするものを選ぶと、配りやすいです。'],
+   ['14:30 帰りの電車へ','🚃','歩いた距離は2日で約15km。|疲れたぶん、帰りの電車はぐっすり眠れます。'],
+   ['まとめ','','急がずに歩くと、港町の良さがよくわかります。季節を変えて、また来たくなる町でした。']]},
+ {id:'news',site:'みなと市ニュース',color:'#2f62e6',ph:'linear-gradient(135deg,#d6e2ff,#e8e8f0)',crumb:'ホーム › 地域 › くらし',title:'みなと市の新しい図書館、来年春に開館へ 夜9時まで利用可能に',meta:'2026年11月2日 18:05 配信',
+  ads:7,lv:3,vignette:true,anchor:true,appbar:true,
+  secs:[['','みなと市は、駅前に建設中の新しい図書館を来年4月に開館すると発表した。平日は夜9時まで開き、仕事帰りにも立ち寄りやすくする。|市によると、蔵書は約30万冊で、今の図書館の1.5倍になる。'],
+   ['駅から徒歩3分','🏛️','新しい図書館は、駅の東口から歩いて3分の場所に建つ。地上4階建てで、1階にはカフェが入る。|市の担当者は「通勤や通学のついでに使ってほしい」と話す。'],
+   ['子ども向けの部屋も','🧸','2階には、声を出して読み聞かせができる子ども向けの部屋をつくる。|ベビーカーのまま入れる広い通路も用意する。'],
+   ['自習席は予約制に','💺','3階の自習席は約200席。混雑を避けるため、スマートフォンから予約できるようにする。|予約は前日から受け付ける予定だ。'],
+   ['本の返却は24時間','📦','建物の外に返却ポストを置き、閉館中でも本を返せる。|駅の改札近くにも返却ポストを置くことを検討している。'],
+   ['電子書籍の貸し出しも','📱','開館に合わせて、電子書籍の貸し出しも始める。|図書館のカードがあれば、自宅から借りられる。'],
+   ['市民の声','🗣️','近くに住む会社員の女性（34）は「夜まで開いているのはうれしい。仕事帰りに寄りたい」と話した。|一方で、駐輪場の広さを心配する声もある。'],
+   ['駐輪場は300台','🚲','市は、建物の地下に約300台分の駐輪場をつくると説明している。|開館後の利用状況を見て、増やすかどうかを決める。'],
+   ['今の図書館は','📚','今の中央図書館は築45年で、建物の古さが課題になっていた。|閉館後の使い道は、来年度中に決める方針だ。'],
+   ['開館記念の催し','🎉','開館日には、作家の講演会やおはなし会を開く予定。|くわしい日程は、来年2月ごろに市の広報で知らせる。'],
+   ['利用カードの切り替え','🪪','今の図書館のカードは、そのまま新しい図書館でも使える。|切り替えの手続きはいらない。'],
+   ['問い合わせ','☎️','くわしくは、みなと市教育委員会の図書館準備室まで。|（この記事は架空のニュースです）']]},
+];
+
+/* ---------- 遊びの進み ---------- */
+let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inAd=false, pend=null;
+const now=()=>(performance.now()-t0)/1000+pen, fmt=x=>x.toFixed(1)+'秒';
+function tick(){if(!running)return;$('#clock').textContent=fmt(now());raf=requestAnimationFrame(tick)}
+const best=id=>Number(store.get('xdoko-best-'+id)||0);
+const cleared=id=>best(id)>0;
+
+function build(){
+  const a=A;document.documentElement.style.setProperty('--site',a.color);document.documentElement.style.setProperty('--ph',a.ph);
+  const S=a.secs.length, G=a.ads-(a.vignette?1:0), half=Math.floor(S/2);
+  let h=`<div class="sitebar"><i aria-hidden="true"></i>${a.site}</div><div class="crumb">${a.crumb}</div><h2>${a.title}</h2><div class="meta">${a.meta}</div>`;
+  let k=Math.floor(Math.random()*INADS.length);
+  a.secs.forEach((s,i)=>{
+    const [t,pic,body]=s.length===3?s:[s[0],'',s[1]];
+    if(t)h+=`<h4>${t}</h4>`;
+    if(pic)h+=`<div class="photo" aria-hidden="true">${pic}</div>`;
+    body.split('|').forEach(p=>h+=`<p>${p}</p><i class="spot"></i>`);
+    if(i%3===1){const ad=INADS[k++%INADS.length];h+=`<div class="inad" role="link"><div class="pic" aria-hidden="true">${ad[0]}</div><span>${ad[1]}</span><small>広告</small></div>`}
+    if(a.vignette&&i===half)h+=`<button class="nextpage" id="nextBtn" type="button">次のページへ（1 / 2）›</button><div id="p2" hidden>`;
+  });
+  h+=`<div class="fin" id="fin"><b>おわり</b>最後まで読んでいただき、ありがとうございました。</div>`+(a.vignette?'</div>':'');
+  $('#art').innerHTML=h;
+  // 関所（ふさぐ広告が出る場所）を、記事の長さに対して等しい間かくで置く。高さを測って決める
+  const p2=$('#p2');if(p2)p2.hidden=false;
+  const top=$('#art').getBoundingClientRect().top, spots=[...$('#art').querySelectorAll('.spot')];
+  const ys=spots.map(x=>x.getBoundingClientRect().top-top), total=ys[ys.length-1];
+  const nbY=$('#nextBtn')?$('#nextBtn').getBoundingClientRect().top-top:Infinity;
+  const chosen=[];for(let j=1;j<=G;j++){const want=total*j/G;let bi=-1,bd=1e9;spots.forEach((x,i)=>{const d=Math.abs(ys[i]-want);if(d<bd&&!chosen.includes(i)&&(chosen.length===0||i>chosen[chosen.length-1])){bd=d;bi=i}});if(bi>=0)chosen.push(bi)}
+  V=a.vignette?chosen.filter(i=>ys[i]<nbY).length:-1;
+  chosen.forEach((si,j)=>{const g=document.createElement('div');g.className='gate';g.dataset.i=(V<0||j<V)?j:j+1;spots[si].after(g)});
+  if(p2)p2.hidden=true;
+  $('#art').querySelectorAll('.inad').forEach(x=>x.onclick=()=>running&&fail('記事の中の広告「'+x.querySelector('span').textContent+'」を押しました'));
+  const nb=$('#nextBtn');if(nb)nb.onclick=()=>{if(running&&!inAd&&n===V)openAd(true)};
+  $('#anchor').hidden=!a.anchor;$('#anchorTxt').textContent=rnd(ANCHORS);
+  $('#appbarSlot').innerHTML=a.appbar?`<div class="appbar" id="appbar"><span>📰 アプリで読むともっと便利</span><button class="open" type="button">開く</button><button class="shut" type="button" aria-label="閉じる">×</button></div>`:'';
+  if(a.appbar){$('#appbar .open').onclick=()=>running&&fail('上の「アプリで開く」を押しました');$('#appbar .shut').onclick=()=>{$('#appbar').remove();SND.close()}}
+}
+$('#anchor').onclick=e=>{if(e.target.closest('#fold')){$('#anchor').hidden=true;SND.close();return}if(running)fail('下に貼りついた広告を押しました')};
+
+function pickOrder(a){
+  // その記事の難しさまでの種類から、重ならないように選ぶ。いちばん難しい段の種類を必ず1つ入れる
+  const pool=Object.keys(TYPES).filter(t=>TYPES[t].lv<=a.lv);
+  const must=rnd(pool.filter(t=>TYPES[t].lv===a.lv));
+  return shuffle([must,...shuffle(pool.filter(t=>t!==must)).slice(0,a.ads-1)]);
+}
+
+function openAd(full){
+  inAd=true;page.classList.add('lock');stage.className=full?'full':'';stage.hidden=false;stage.innerHTML='';$('#panel').hidden=false;
+  const type=ORDER[n], T=TYPES[type], ad=el(T.html(rnd(PRODUCTS)));ad.dataset.type=type;stage.appendChild(ad);
+  const w=document.createElement('div');w.className='hint';w.id='hintTxt';w.hidden=true;w.textContent='ヒント：'+T.hint;stage.appendChild(w);
+  ad.addEventListener('click',e=>{const t=e.target;
+    const r=t.closest('.real');if(r&&!r.disabled)return win();
+    if(t.closest('.nest')||t.closest('.skip'))return;
+    const f=t.closest('.fake,.big,.buy');if(f)return fail('押したのは「'+f.textContent.trim()+'」でした');});
+  ad.querySelectorAll('.real[role=button]').forEach(b=>b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();win()}}));
+  if(T.wire)T.wire(ad);
+}
+function win(){
+  if(!inAd)return;SND.close();toast('閉じた');
+  if(n===V){$('#p2').hidden=false;$('#nextBtn').hidden=true;page.scrollTop=$('#p2').offsetTop-70}
+  n++;stage.className='';stage.innerHTML='';stage.hidden=true;$('#panel').hidden=true;inAd=false;page.classList.remove('lock');check();
+}
+// 読み進めて「関所」が画面の下のほうまで来たら、少し遅れて広告が出る（本物の広告も読み込みに一瞬かかる）
+function check(){
+  if(!running||inAd||pend)return;
+  const g=document.querySelector('.gate[data-i="'+n+'"]');
+  if(g&&g.offsetParent!==null&&g.offsetTop<page.scrollTop+page.clientHeight*0.75){pend=setTimeout(()=>{pend=null;if(running&&!inAd)openAd()},700);return}
+  if(n>=ORDER.length){const f=$('#fin');if(f.offsetTop+f.offsetHeight<=page.scrollTop+page.clientHeight+4)finish()}
+}
+page.addEventListener('scroll',check,{passive:true});
+
+function stop(){running=false;cancelAnimationFrame(raf);clearTimeout(pend);pend=null;inAd=false}
+function fail(why){stop();SND.virus();virus(why)}
+let viv=0;
+function virus(why){
+  const v=$('#virus');v.hidden=false;v.classList.remove('done');$('#vwhy').textContent=why;
+  const items=['写真','連絡先','検索履歴','メッセージ','位置情報','カレンダー'];
+  const log=$('#vlog');log.textContent='';let p=0;clearInterval(viv);
+  viv=setInterval(()=>{p+=7+Math.random()*9;$('#vbar').style.width=Math.min(p,100)+'%';
+    $('#vmsg').textContent='あなたの端末から '+rnd(items)+' を送信しています…';
+    log.textContent=(log.textContent+'\nsending '+Math.random().toString(16).slice(2,10)+'.dat ... OK').split('\n').slice(-6).join('\n');
+    if(p>=100){clearInterval(viv);setTimeout(()=>v.classList.add('done'),250)}},90);
+}
+function finish(){
+  stop();SND.clear();const t=now();$('#clock').textContent=fmt(t);
+  const b=best(A.id), nb=!b||t<b;if(nb)store.set('xdoko-best-'+A.id,t.toFixed(1));
+  const idx=ARTICLES.indexOf(A), next=ARTICLES[idx+1];
+  const txt=`×はどこだ｜記事${idx+1}「${A.site}」\n広告${ORDER.length}枚をよけて ${fmt(t)}（ヒント${hints}回）\n#×はどこだ`;
+  stage.className='';stage.hidden=false;stage.innerHTML='';
+  const box=el(`<div class="card"><h3>読み切った！</h3><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><div class="share" id="shareTxt"></div>
+   <div class="btns"><button class="big" id="copyBtn" type="button">結果をコピー</button>${next?'<button class="big btn2" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="toMenu" type="button">記事を選ぶ</button></div></div>`);
+  stage.appendChild(box);box.querySelector('#shareTxt').textContent=txt;
+  box.querySelector('#copyBtn').onclick=()=>{const sel=()=>{const r=document.createRange();r.selectNodeContents(box.querySelector('#shareTxt'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選んだので、コピーしてね')};
+    try{navigator.clipboard.writeText(txt).then(()=>toast('コピーした')).catch(sel)}catch(e){sel()}};
+  if(next)box.querySelector('#nextArt').onclick=()=>start(next);
+  box.querySelector('#toMenu').onclick=menu;
+}
+function start(a){
+  stop();A=a;n=0;hints=0;pen=0;ORDER=pickOrder(a);$('#virus').hidden=true;$('#panel').hidden=true;
+  build();page.scrollTop=0;$('#clock').textContent=fmt(0);
+  stage.className='';stage.hidden=false;stage.innerHTML='';
+  const box=el(`<div class="card"><h3>記事${ARTICLES.indexOf(a)+1}</h3><p><b>${a.site}</b></p><p>最後まで読めばゴール。広告は${a.ads}枚。<br>本物の×だけを押そう。</p>
+   <button class="big" id="go" type="button">スタート</button><p class="total">${best(a.id)?'ベスト '+fmt(best(a.id)):'タイムアタック'}</p></div>`);
+  stage.appendChild(box);
+  box.querySelector('#go').onclick=()=>{stage.innerHTML='';stage.hidden=true;page.classList.remove('lock');running=true;t0=performance.now();tick();SND.close();check()};
+  page.classList.add('lock');
+}
+function menu(){
+  stop();$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);
+  stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0);
+  const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
+   <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}</span></button>`}).join('')}</div>
+   <p class="total">${all?'3本の合計ベスト '+fmt(sum):'3本読み切ると合計タイムが出ます'}</p>
+   <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 14px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button></div>`);
+  stage.appendChild(box);
+  box.querySelectorAll('.lv').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
+  box.querySelector('#menuSound').onclick=e=>{$('#soundBtn').click();e.currentTarget.textContent=soundOn?'🔊 音あり':'🔇 音なし'};
+  page.classList.add('lock');
+}
+$('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(h&&h.hidden){h.hidden=false;hints++;pen+=5;toast('+5秒')}};
+$('#againBtn').onclick=()=>start(A);
+$('#menuBtn').onclick=menu;
+menu();
+</script>
+<script>
+// ホーム画面に追加したとき、電波が無くても遊べるように保存する（https か手元の検査のときだけ。外へは何も送らない）
+if('serviceWorker' in navigator&&window.isSecureContext&&location.protocol!=='file:')navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>
