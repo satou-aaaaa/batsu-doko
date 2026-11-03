@@ -155,6 +155,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .sharebtns .prim{grid-column:1/-1;background:var(--hot);border-color:var(--hot);color:#fff}
 .letter{border:2px dashed var(--hot);border-radius:10px;padding:10px;margin:10px 0;background:#fff5f8}
 .foot{font-size:12px;color:var(--muted);margin-top:12px}
+.kofi{font-size:12px;color:var(--muted);line-height:1.7;margin:4px 0 0}
+.kofi a{color:var(--muted);text-decoration:underline}
 .fb{display:flex;align-items:center;justify-content:center;min-height:44px;color:var(--sky);font-weight:800;font-size:14px}
 #virus .how2{font-size:14px;color:#fff;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:10px 12px;max-width:340px;line-height:1.6}
 #virus .how2 small{display:block;color:#ffb0b0;font-size:12px;margin-top:4px}
@@ -345,6 +347,9 @@ const dailyArt=d=>ARTICLES[((d-1)%ARTICLES.length+ARTICLES.length)%ARTICLES.leng
 const SITE='https://satou-aaaaa.github.io/batsu-doko/';
 // 感想：押したときに GitHub の感想フォームが開くだけ（ページからは何も送らない）。週1で読んで直す（shared-workflows routines/game-feedback.md）
 const FEEDBACK='https://github.com/satou-aaaaa/batsu-doko/issues/new?template=feedback.yml';
+// 応援：自己ベストを出した結果の画面にだけ、下に1行のただのリンク（遊ぶ前・途中・感染の画面には出さない。Ko-fi のスクリプトは入れない）
+const KOFI='https://ko-fi.com/satouaaaaa';
+const kofiLine=()=>`<p class="kofi" id="kofi">楽しめたら、<a href="${KOFI}" target="_blank" rel="noopener">Ko-fi でコーヒー1杯の応援</a>をもらえると、新しい記事と広告づくりの励みになります（任意・遊ぶのはずっと無料）。</p>`;
 const fbLink=id=>`<a class="fb" id="${id}" href="${FEEDBACK}" target="_blank" rel="noopener">感想を送る（直すのに使います）</a>`;
 const baseUrl=()=>/^https?:$/.test(location.protocol)?location.origin+location.pathname:SITE;
 const dBest=d=>Number(store.get('xdoko-daily-'+d)||0);
@@ -491,7 +496,7 @@ function finish(){
   const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
    <div class="share" id="shareTxt"></div>
    <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
-   <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>${fbLink('fbRes')}</div>`);
+   <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>${fbLink('fbRes')}${nb?kofiLine():''}</div>`);
   stage.appendChild(box);box.querySelector('#shareTxt').textContent=full;
   box.querySelector('#xBtn').href='https://x.com/intent/post?text='+encodeURIComponent(S.text)+'&url='+encodeURIComponent(S.url);
   box.querySelector('#lineBtn').href='https://line.me/R/share?text='+encodeURIComponent(full);

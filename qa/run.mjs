@@ -445,6 +445,27 @@ if (browser) try {
     await p.close();
   }
 
+  // 5f. Ko-fi の応援：自己ベストを出した結果の画面にだけ1行。遊ぶ前・途中・感染・ベストでない結果には出さない
+  {
+    const p = await open();
+    const has = () => p.evaluate(() => !!document.getElementById("kofi"));
+    const where = [];
+    if (await has()) where.push("メニュー");
+    await startArt(p, 0); if (await has()) where.push("遊ぶ前");
+    await p.waitForTimeout(50); if (await has()) where.push("途中");
+    await p.evaluate(() => document.querySelector("#anchor").click()); await p.waitForTimeout(100);
+    if (await has()) where.push("感染");
+    check("Ko-fi のひとことは、メニュー・遊ぶ前・途中・感染の画面に出ない", where.length === 0, where.join(","));
+    await p.evaluate(() => menu());
+    await play(p, 0);
+    const k = await p.evaluate(() => { const e = document.getElementById("kofi"), a = e && e.querySelector("a"); return e && { n: document.querySelectorAll("#kofi").length, href: a.href, target: a.target, rel: a.rel, inAd: !!e.closest(".ad"), txt: e.textContent }; });
+    check("自己ベストの結果の画面に Ko-fi のひとことが1行だけ、ただのリンクで出る（広告の枠に入れない）", k && k.n === 1 && k.href === "https://ko-fi.com/satouaaaaa" && k.target === "_blank" && k.rel.includes("noopener") && !k.inAd && k.txt.includes("任意・遊ぶのはずっと無料"), JSON.stringify(k));
+    await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "0.1"); menu(); });
+    await play(p, 0);
+    check("自己ベストでない結果の画面には Ko-fi のひとことを出さない（くり返し見る画面に出し続けない）", !(await has()));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
