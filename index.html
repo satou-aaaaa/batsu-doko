@@ -460,7 +460,7 @@ function shareInfo(t){
     text:`×はどこだ 記事${idx+1}${hd}「${A.site}」\n${grid} ${fmt(t)} ${md}\n#×はどこだ`};
 }
 function finish(){
-  stop();SND.clear();const t=now();$('#clock').textContent=fmt(t);hud();
+  stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
   let b,nb;
   if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));

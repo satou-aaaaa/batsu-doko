@@ -201,7 +201,7 @@ if (browser) try {
     const p = await open();
     const det = await p.evaluate(() => {
       const snap = (d) => { start(dailyArt(d), { kind: "daily", day: d }); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
-        const g = [...document.querySelectorAll(".gate")].map((x) => x.dataset.i + "@" + x.previousElementSibling.textContent.length).join(); if (p2) p2.hidden = true; return ORDER.join() + "|" + g + "|" + document.querySelector("#anchorTxt").textContent; };
+        const spots = [...document.querySelectorAll("#art .spot")]; const g = [...document.querySelectorAll(".gate")].map((x) => x.dataset.i + "@" + spots.indexOf(x.previousElementSibling)).join(); if (p2) p2.hidden = true; return ORDER.join() + "|" + g + "|" + document.querySelector("#anchorTxt").textContent; };
       const a = snap(5), same = Array.from({ length: 100 }, () => snap(5)).every((x) => x === a);
       const diff = new Set(Array.from({ length: 30 }, (_, i) => snap(i + 1))).size;
       let bad = [];
@@ -242,7 +242,7 @@ if (browser) try {
     const sv = await p.evaluate(() => {
       // 並び・関所の置き場所・記事の中の広告・下の広告をまとめて比べる
       const snap = (s) => { start(ARTICLES[2], { kind: "article", seed: s }); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
-        const g = [...document.querySelectorAll(".gate")].map((x) => x.dataset.i + "@" + x.previousElementSibling.textContent.length).join(); if (p2) p2.hidden = true;
+        const spots = [...document.querySelectorAll("#art .spot")]; const g = [...document.querySelectorAll(".gate")].map((x) => x.dataset.i + "@" + spots.indexOf(x.previousElementSibling)).join(); if (p2) p2.hidden = true;
         const ads = [...document.querySelectorAll("#art .inad span")].map((x) => x.textContent).join();
         return ORDER.join() + "|" + g + "|" + ads + "|" + document.querySelector("#anchorTxt").textContent; };
       const a = snap(12345), same = Array.from({ length: 100 }, () => snap(12345)).every((x) => x === a);
@@ -341,6 +341,8 @@ if (browser) try {
     // メダル
     const md = await p.evaluate(() => { const a = ARTICLES[0]; return [medal(a.gold, a, false), medal(a.gold * 1.4, a, false), medal(a.gold * 1.4 + 0.1, a, false), medal(a.goldH, a, true), medal(0, a, false), nextMedal(a.gold + 1, a, false), nextMedal(a.gold * 2, a, false)]; });
     check("メダル：金は目安以内・銀は1.4倍以内・それより遅ければ銅、上級は上級の目安で決まる", md.slice(0, 5).join() === "🥇,🥈,🥉,🥇,", md.join());
+    const rd = await p.evaluate(() => { const real = performance.now; try { start(ARTICLES[0]); running = true; performance.now = () => 20040; t0 = 0; pen = 0; finish(); return { txt: document.querySelector("#stage .card").textContent, saved: localStorage.getItem("xdoko-best-recipe") }; } finally { performance.now = real; localStorage.setItem("xdoko-best-recipe", "25.0"); localStorage.removeItem("xdoko-stats"); menu(); } });
+    check("結果のメダルは表示と同じ0.1秒の丸めで決まる（20.04秒→20.0秒で金、保存も20.0）", rd.txt.includes("🥇 金メダル") && rd.saved === "20.0", rd.saved);
     check("メダルの次の目標（金まで・銀まで あと何秒）が出る", md[5] === "金まで あと 1.0秒" && md[6].startsWith("銀まで あと"), md.slice(5).join(" / "));
     check("メニューの記事に、ベストのメダルが出る", (await p.textContent('.lv[data-i="0"]')).includes("🥈"), await p.textContent('.lv[data-i="0"]'));
     // 上級を通しで遊ぶ（いちばん難しい記事）：ヒントのボタンは出ない・記録は別に残る
@@ -382,7 +384,7 @@ if (browser) try {
     await p.evaluate(() => document.querySelector("#anchor").click()); await p.waitForTimeout(100);
     check("記録：感染した回数が増える", (await p.evaluate(() => JSON.parse(localStorage.getItem("xdoko-stats")).virus)) === 1);
     await p.goto(url + "?a=travel&t=40&s=99&h=1"); await p.waitForTimeout(200);
-    check("上級の挑戦状のリンク（&h=1）を開くと、上級で始まる", (await p.textContent("#stage .card")).includes("記事2 上級") && (await p.evaluate(() => MODE.hard === true && ORDER.length === 6 && ORDER.every((t) => TYPES[t].lv >= 2))));
+    check("上級の挑戦状のリンク（&h=1）を開くと、上級で始まる", (await p.textContent("#stage .card")).includes("記事2 上級") && (await p.evaluate(() => MODE.hard === true && MODE.seed === 99 && ORDER.length === 6 && ORDER.every((t) => TYPES[t].lv >= 2))));
     await p.close();
   }
 

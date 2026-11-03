@@ -16,9 +16,11 @@ const fonts = ['700 40px "Dela Gothic One"', '700 40px "M PLUS Rounded 1c"', '80
 const bad = await p.evaluate(async (fs) => { const out = []; for (const f of fs) { try { if (!(await document.fonts.load(f, document.body.textContent)).length) out.push(f); } catch (e) { out.push(f); } } await document.fonts.ready; return out; }, fonts);
 if (bad.length) { await b.close(); throw new Error("文字が読み込めない：" + bad.join(", ")); }
 await p.waitForTimeout(300);
-await p.screenshot({ path: path.join(root, "og.png") }); await b.close();
+// 画像はいったん手元に持ち、指紋を確かめてから og.png に書く（途中で og.html が変わったら書かない）
+const png = await p.screenshot(); await b.close();
 // どの og.html から作ったかを残す（qa が見て、作り直し忘れを落とす）
 // 写しているあいだに og.html が変わったら、指紋を残さずに止める（古い画像が qa を通らないように）
 if (sum() !== before) throw new Error("写しているあいだに tools/og.html が変わった。もう一度実行する");
+writeFileSync(path.join(root, "og.png"), png);
 writeFileSync(path.join(root, "tools/og.sha256"), before + "\n");
 console.log("og.png を作った");
