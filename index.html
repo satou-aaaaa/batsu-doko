@@ -138,6 +138,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .dex div{border:1px solid var(--line);border-radius:8px;padding:8px;font-size:12px;line-height:1.45;background:var(--paper);min-width:0}
 .dex b{display:block;font-size:13px}
 .dex .no{color:var(--muted)}
+.dex .pr{display:block;width:100%;min-height:44px;margin-top:6px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-weight:800;cursor:pointer}
+.practice{color:#fff;font-size:13px;margin:0;text-align:center}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;margin:6px 0 12px}
 .stats span{background:var(--paper);border-radius:8px;padding:8px}
 .stats b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
@@ -206,7 +208,7 @@ function seeded(n){let a=(n*2654435761)>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let 
 const rnd=a=>a[Math.floor(R()*a.length)];
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function el(html){const d=document.createElement('div');d.innerHTML=html.trim();return d.firstChild}
-let toastT;function toast(t){say.textContent=t;say.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>say.style.opacity=0,900)}
+let toastT;function toast(t,ms=900){say.textContent=t;say.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>say.style.opacity=0,ms)}
 
 /* ---------- 音（ボタンを押したあとだけ鳴る。外へは何も送らない） ---------- */
 let ac=null, soundOn=store.get('xdoko-sound')!=='off';
@@ -334,7 +336,7 @@ const ARTICLES=[
 ];
 
 /* ---------- 遊びの進み ---------- */
-let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inAd=false, pend=null, used=[], MODE={kind:'article'};
+let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inAd=false, pend=null, used=[], SPL=[], MODE={kind:'article'};
 // 今日の番号（日本時間。2026-11-03 が #1）。検査では window.__XDOKO_DAY で日を決められる
 const DAY0=Date.UTC(2026,10,3)/864e5;
 const today=()=>Number.isInteger(window.__XDOKO_DAY)?window.__XDOKO_DAY:Math.floor((Date.now()+9*36e5)/864e5)-DAY0+1;
@@ -362,6 +364,10 @@ function getJ(k,d){try{return JSON.parse(store.get(k))||d}catch(e){return d}}
 const dex=()=>getJ('xdoko-dex',{}), stats=()=>getJ('xdoko-stats',{clear:0,closed:0,virus:0});
 function bump(k){const s=stats();s[k]=(s[k]||0)+1;store.set('xdoko-stats',JSON.stringify(s))}
 function found(type,hint){const d=dex(),e=d[type]||{n:0,clean:false};e.n++;if(!hint)e.clean=true;d[type]=e;store.set('xdoko-dex',JSON.stringify(d))}
+// ベストとの差（スピードランの区間タイムと同じ考え方）：自己ベストのときに広告を閉じた時刻を覚え、次から閉じるたびに比べる。今日の1本は日ごとに並びが変わるので、記事を読むときだけ
+const spKey=()=>MODE.kind==='article'&&A?'xdoko-split-'+A.id+(MODE.hard?'-h':''):'';
+function pbSplits(){const k=spKey(),s=k?getJ(k,null):null;return Array.isArray(s)&&s.length===ORDER.length&&s.every(x=>typeof x==='number')?s:null}
+function splitTxt(i,t){const s=pbSplits();if(!s)return '';const d=Math.round((t-s[i])*10)/10;return d<0?`ベストより ${fmt(-d)} 速い`:d>0?`ベストより ${fmt(d)} おそい`:'ベストと同じ'}
 
 function build(){
   const a=cfg();document.documentElement.style.setProperty('--site',a.color);document.documentElement.style.setProperty('--ph',a.ph);
@@ -416,7 +422,9 @@ function openAd(full){
   if(T.wire)T.wire(ad);
 }
 function win(){
-  if(!inAd)return;SND.close();toast('閉じた');found(ORDER[n],!!used[n]);bump('closed');
+  if(!inAd)return;
+  if(MODE.kind==='practice')return practiceEnd(true);
+  SND.close();const ts=Number(now().toFixed(1)),sp=splitTxt(n,ts);SPL[n]=ts;toast(sp?'閉じた　'+sp:'閉じた',sp?1600:900);found(ORDER[n],!!used[n]);bump('closed');
   if(n===V){$('#p2').hidden=false;$('#nextBtn').hidden=true;page.scrollTop=$('#p2').offsetTop-70}
   n++;stage.className='';stage.innerHTML='';stage.hidden=true;$('#panel').hidden=true;inAd=false;page.classList.remove('lock');check();
 }
@@ -436,6 +444,7 @@ page.addEventListener('scroll',check,{passive:true});
 function stop(){running=false;cancelAnimationFrame(raf);clearTimeout(pend);pend=null;inAd=false}
 // 押してはいけない所を押した。何がちがったか・正しい閉じ方・どこまで読めたかを見せる
 function fail(why,how){
+  if(MODE.kind==='practice')return practiceEnd(false,why);
   const m=page.scrollHeight-page.clientHeight, pct=m>0?Math.round(Math.min(1,page.scrollTop/m)*100):0;
   if(!how)how=inAd&&TYPES[ORDER[n]]?'正しくは：'+TYPES[ORDER[n]].hint:'';
   const left=ORDER.length-n;
@@ -465,7 +474,7 @@ function finish(){
   if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
     if(d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
-  }else{const key='xdoko-best-'+A.id+(MODE.hard?'-h':'');b=Number(store.get(key)||0);nb=!b||t<b;if(nb)store.set(key,t.toFixed(1))}
+  }else{const key='xdoko-best-'+A.id+(MODE.hard?'-h':'');b=Number(store.get(key)||0);nb=!b||t<b;if(nb){store.set(key,t.toFixed(1));if(SPL.length===ORDER.length)store.set(spKey(),JSON.stringify(SPL))}}
   bump('clear');
   // 次へ：ふつうは次の記事。上級は、次の記事を読み切っていればその上級
   const idx=ARTICLES.indexOf(A), nx=ARTICLES[idx+1], next=MODE.kind!=='article'?null:MODE.hard?(nx&&cleared(nx.id)?nx:null):nx;
@@ -496,7 +505,7 @@ const okSeed=s=>Number.isInteger(s)&&s>=1&&s<2147483647;
 const again=()=>MODE.kind==='article'&&!MODE.rival?{kind:'article',hard:!!MODE.hard}:MODE;
 function start(a,mode={kind:'article'}){
   if(mode.kind==='article'&&!okSeed(mode.seed))mode={...mode,seed:newSeed()};
-  stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];
+  stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];SPL=[];
   R=seeded(mode.kind==='daily'?mode.day:mode.seed);
   ORDER=pickOrder(cfg());$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
@@ -537,12 +546,27 @@ function showDex(){
   stop();stage.className='menu';stage.hidden=false;stage.innerHTML='';
   const d=dex(), st=stats(), ks=Object.keys(TYPES), got=ks.filter(k=>d[k]).length, s=streak();
   const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
-  const box=el(`<div class="card"><h3>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}</p>
-   <div class="dex">${ks.map(k=>{const T=TYPES[k],e=d[k],star='★'.repeat(T.lv);return e?`<div><b>${T.name} <small>${star}</small></b>${T.hint}<br><small>閉じた ${e.n}回${e.clean?'・ヒントなしで閉じた':''}</small></div>`:`<div class="no"><b>？？？ <small>${star}</small></b>まだ出会っていない</div>`}).join('')}</div>
+  const box=el(`<div class="card"><h3>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}${got?'<br>「練習」で、時間を気にせず何度でも試せます。':''}</p>
+   <div class="dex">${ks.map(k=>{const T=TYPES[k],e=d[k],star='★'.repeat(T.lv);return e?`<div><b>${T.name} <small>${star}</small></b>${T.hint}<br><small>閉じた ${e.n}回${e.clean?'・ヒントなしで閉じた':''}</small><button class="pr" type="button" data-pr="${k}">練習</button></div>`:`<div class="no"><b>？？？ <small>${star}</small></b>まだ出会っていない</div>`}).join('')}</div>
    <p class="sec">記録</p>
    <div class="stats"><span>読み切った<b>${st.clear||0}回</b></span><span>閉じた広告<b>${st.closed||0}枚</b></span><span>感染した<b>${st.virus||0}回</b></span><span>連続の最高<b>${s.max||0}日</b></span><span style="grid-column:1/-1">メダル<b>🥇${medals['🥇']||0}　🥈${medals['🥈']||0}　🥉${medals['🥉']||0}</b></span></div>
    <button class="big" id="dexBack" type="button">メニューへ</button></div>`);
-  stage.appendChild(box);box.querySelector('#dexBack').onclick=menu;page.classList.add('lock');
+  stage.appendChild(box);box.querySelector('#dexBack').onclick=menu;box.querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>practice(b.dataset.pr));page.classList.add('lock');
+}
+// 練習：図鑑で見つけた広告を1枚だけ試す。時間も記録（ベスト・図鑑・記録）も残さない。まちがえても感染の画面は出さず、閉じ方を見せる
+function practice(type){
+  if(!TYPES[type])return showDex();
+  stop();MODE={kind:'practice',type};A=null;ORDER=[type];n=0;used=[];SPL=[];V=-1;pen=0;$('#virus').hidden=true;$('#clock').textContent=fmt(0);
+  openAd(true);
+  const tag=document.createElement('p');tag.className='practice';tag.textContent=`練習：${TYPES[type].name}（時間も記録も残らない）`;stage.appendChild(tag);
+}
+function practiceEnd(ok,why){
+  const type=MODE.type,T=TYPES[type];if(ok)SND.close();stop();$('#panel').hidden=true;
+  stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  const box=el(`<div class="card"><h3>${ok?'閉じられた！':'それは広告の一部でした'}</h3><p><b>${T.name}</b> <small>${'★'.repeat(T.lv)}</small></p>${ok?'':'<p class="lost" id="prWhy"></p>'}<p>閉じ方：${T.hint}</p><p class="total">練習なので、時間も記録も残りません</p>
+   <div class="btns"><button class="big" id="prAgain" type="button">もう一度</button><button class="big btn2" id="prBack" type="button">図鑑へ</button></div></div>`);
+  if(!ok)box.querySelector('#prWhy').textContent=why||'';
+  stage.appendChild(box);box.querySelector('#prAgain').onclick=()=>practice(type);box.querySelector('#prBack').onclick=showDex;page.classList.add('lock');
 }
 // 挑戦状のリンク（?d=日の番号&t=秒 か ?a=記事&t=秒）で開いたら、その場で挑戦できるようにする
 function fromLink(){
