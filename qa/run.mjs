@@ -429,6 +429,22 @@ if (browser) try {
     await p.close();
   }
 
+  // 5e. 感想を送るリンク：メニューと結果に出る。押したときに GitHub の感想フォームが開くだけ
+  {
+    const p = await open();
+    const FB = "https://github.com/satou-aaaaa/batsu-doko/issues/new?template=feedback.yml";
+    const look = (id) => p.evaluate((id) => { const a = document.getElementById(id); return a && { href: a.href, target: a.target, rel: a.rel, h: a.offsetHeight }; }, id);
+    const m = await look("fbMenu");
+    check("メニューに「感想を送る」があり、感想フォームを新しいタブで開く（高さ44px以上）", m && m.href === FB && m.target === "_blank" && m.rel.includes("noopener") && m.h >= 44, JSON.stringify(m));
+    await play(p, 0);
+    const r = await look("fbRes");
+    check("結果の画面にも「感想を送る」がある", r && r.href === FB && r.target === "_blank" && r.h >= 44, JSON.stringify(r));
+    const yml = readFileSync(path.join(root, ".github/ISSUE_TEMPLATE/feedback.yml"), "utf8");
+    const ids = [...yml.matchAll(/^\s+id: (\S+)/gm)].map((x) => x[1]);
+    check("感想フォームの項目は楽しさ・よかった所・直してほしい所だけ（名前・メールを聞かない）、ラベルは「感想」", ids.join() === "fun,good,fix" && /labels: \["感想"\]/.test(yml) && !/(email|メールアドレス|お名前)/i.test(yml.replace(/名前・メール[^\n]*/g, "")), ids.join());
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
