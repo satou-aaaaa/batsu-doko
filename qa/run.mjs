@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { createHash } from "node:crypto";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const url = "file://" + path.join(root, "index.html");
@@ -179,7 +180,9 @@ if (browser) try {
     const share = await p.textContent("#shareTxt"), shown = await p.textContent("#clock");
     check("結果の文に記事名・広告ごとの印（4つ）・タイム・挑戦状のリンクが入る", share.includes("記事1") && share.includes("✅✅✅✅") && share.includes(shown) && share.includes("#×はどこだ") && share.includes("batsu-doko/?a=recipe&t=" + parseFloat(shown).toFixed(1)), share);
     const links = await p.evaluate(() => ({ x: document.querySelector("#xBtn").href, line: document.querySelector("#lineBtn").href, share: !!navigator.share, btn: !!document.querySelector("#shareBtn") }));
-    check("X と LINE の共有ボタンが、結果の文を入れた公式の共有リンクになっている", links.x.startsWith("https://x.com/intent/post?text=") && decodeURIComponent(links.x).includes("記事1") && links.line.startsWith("https://line.me/R/share?text=") && decodeURIComponent(links.line).includes("?a=recipe"), JSON.stringify(links));
+    check("X と LINE の共有ボタンが、結果の文を入れた公式の共有リンクになっている", links.x.startsWith("https://x.com/intent/post?text=") && decodeURIComponent(links.x).includes("記事1") && new URL(links.x).searchParams.get("url")?.includes("?a=recipe&t=" + parseFloat(shown).toFixed(1)) && links.line.startsWith("https://line.me/R/share?text=") && new URL(links.line).searchParams.get("text")?.includes("?a=recipe&t=" + parseFloat(shown).toFixed(1)), JSON.stringify(links));
+    const sd = await p.evaluate(() => MODE.seed);
+    check("記事の共有リンクに広告の並びの番号（&s=）が入る", Number.isInteger(sd) && share.includes("&s=" + sd), share);
     check("端末の共有（Web Share）があるときだけ「結果を送る」が出る", links.share === links.btn);
     check("結果のタイムは0秒より大きい", parseFloat(shown) > 0, shown);
     await p.context().grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => {});
@@ -226,6 +229,27 @@ if (browser) try {
     let okDaily = true; try { await playOn(p, "今日の1本"); } catch (e) { okDaily = false; }
     const dshare = okDaily ? await p.textContent("#shareTxt") : "";
     check("今日の1本を最後まで読め、結果の文に番号・連続・リンクが入る", okDaily && dshare.includes("今日の1本 #2") && dshare.includes("?d=2&t="), dshare);
+    // 2日続けたあとの共有文に「🔥2日連続」が入る。ベストがある日に遊び直しても連続は数える
+    const sk2 = await p.evaluate(() => {
+      const fin = (d) => { window.__XDOKO_DAY = d; start(dailyArt(d), { kind: "daily", day: d }); running = true; t0 = performance.now() - 3000; finish(); return document.querySelector("#shareTxt").textContent; };
+      localStorage.removeItem("xdoko-streak"); fin(30); const txt = fin(31);
+      localStorage.removeItem("xdoko-streak"); localStorage.setItem("xdoko-daily-40", "9.9"); fin(40); const c = JSON.parse(localStorage.getItem("xdoko-streak") || "{}").count;
+      delete window.__XDOKO_DAY; menu(); return { txt, c };
+    });
+    check("2日続けて読み切ると、共有文に「🔥2日連続」が入る", sk2.txt.includes("🔥2日連続"), sk2.txt);
+    check("その日のベストがすでにあっても、読み切れば連続に数える", sk2.c === 1, sk2.c);
+    // 記事の挑戦状：同じ番号（s）なら、何度作っても同じ広告の並び。もう一度はふつうなら新しい並び
+    const sv = await p.evaluate(() => {
+      const snap = (s) => { start(ARTICLES[2], { kind: "article", seed: s }); return ORDER.join() + "|" + document.querySelector("#anchorTxt").textContent; };
+      const a = snap(12345), same = Array.from({ length: 100 }, () => snap(12345)).every((x) => x === a);
+      const diff = new Set(Array.from({ length: 30 }, (_, i) => snap(i + 1))).size;
+      start(ARTICLES[0]); const s1 = MODE.seed; start(ARTICLES[0], again()); const s2 = MODE.seed;
+      start(ARTICLES[0], { kind: "article", seed: 77, rival: 20 }); start(ARTICLES[0], again()); const s3 = MODE.seed;
+      menu(); return { same, diff, s1, s2, s3 };
+    });
+    check("記事の挑戦状は、同じ番号なら100回作っても同じ広告の並び", sv.same);
+    check("記事の並びは、番号がちがえば変わる（30通りで5通り以上）", sv.diff >= 5, sv.diff);
+    check("もう一度：ふつうの記事は新しい並び、挑戦状は同じ並び", sv.s1 !== sv.s2 && sv.s3 === 77, JSON.stringify(sv));
     await p.close();
   }
   {
@@ -237,6 +261,12 @@ if (browser) try {
     check("挑戦状の印はアドレスから消える（読み込み直しでふつうに戻る）", search === "", search);
     await p.click("#go"); const vs = await p.evaluate(() => { t0 = performance.now() - 4000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; });
     check("挑戦状の相手より速ければ「勝ち」が出る", vs.includes("勝ち") && vs.includes("12.3秒"), vs);
+    // 相手は0.1秒に丸めてある。同じ表示（12.3秒）なら負けにせず「同タイム」
+    const tie = await p.evaluate(() => [12.34, 12.26, 12.36].map((x) => { start(A, MODE); running = true; t0 = performance.now() - x * 1000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; }));
+    check("挑戦状：表示が同じタイムなら「同タイム」、0.1秒でも遅ければ「あと 0.1秒」", tie[0].includes("同タイム") && tie[1].includes("同タイム") && tie[2].includes("あと 0.1秒"), tie.map((x) => x.slice(-30)).join(" / "));
+    await p.goto(url + "?a=travel&t=30&s=4242"); await p.waitForTimeout(200);
+    const lk = await p.evaluate(() => { const a = ORDER.join(); start(A, { kind: "article", seed: 4242 }); return { seed: MODE.seed, same: a === ORDER.join() }; });
+    check("記事の挑戦状のリンク（&s=4242）を開くと、送った人と同じ並びになる", lk.same && lk.seed === 4242, JSON.stringify(lk));
     await p.goto(url + "?a=news&t=50"); await p.waitForTimeout(200);
     check("記事の挑戦状（?a=news）は、まだ開いていない記事でもその場で遊べる", (await p.textContent("#stage .card")).includes("みなと市ニュース"));
     for (const q of ["?d=999999&t=1", "?d=abc", "?a=nope&t=3", "?d=1&t=-5"]) {
@@ -273,6 +303,10 @@ if (browser) try {
     const wh = png ? [png.readUInt32BE(16), png.readUInt32BE(20)] : [0, 0];
     check("OGP：題・説明・画像（https の絶対アドレス）・大きい画像のカードがある", m["og:title"] && m["og:description"] && /^https:\/\/.+\/og\.png$/.test(m["og:image"] || "") && m["twitter:card"] === "summary_large_image", JSON.stringify(m));
     check("OGP の画像 og.png が 1200×630", wh[0] === 1200 && wh[1] === 630, wh.join("x"));
+    // tools/og.html を直したのに og.png を作り直していないと落とす（make-og.mjs が作ったときの og.html の指紋と比べる）
+    const ogSum = createHash("sha256").update(readFileSync(path.join(root, "tools/og.html"))).digest("hex");
+    const ogRec = existsSync(path.join(root, "tools/og.sha256")) ? readFileSync(path.join(root, "tools/og.sha256"), "utf8").trim() : "";
+    check("og.png は今の tools/og.html から作ったもの（直したら node tools/make-og.mjs）", ogRec === ogSum, ogRec.slice(0, 12) + " / " + ogSum.slice(0, 12));
     await p.close();
   }
 

@@ -430,7 +430,7 @@ function shareInfo(t){
     return {grid,title:`今日の1本 #${MODE.day}`,url:`${baseUrl()}?d=${MODE.day}&t=${t.toFixed(1)}`,
       text:`×はどこだ 今日の1本 #${MODE.day}\n${grid} ${fmt(t)}${st>1?`\n🔥${st}日連続`:''}\n#×はどこだ`}}
   const idx=ARTICLES.indexOf(A);
-  return {grid,title:`記事${idx+1}「${A.site}」`,url:`${baseUrl()}?a=${A.id}&t=${t.toFixed(1)}`,
+  return {grid,title:`記事${idx+1}「${A.site}」`,url:`${baseUrl()}?a=${A.id}&t=${t.toFixed(1)}&s=${MODE.seed}`,
     text:`×はどこだ 記事${idx+1}「${A.site}」\n${grid} ${fmt(t)}\n#×はどこだ`};
 }
 function finish(){
@@ -438,11 +438,12 @@ function finish(){
   let b,nb;
   if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
-    if(!b&&d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
+    if(d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
   }else{b=best(A.id);nb=!b||t<b;if(nb)store.set('xdoko-best-'+A.id,t.toFixed(1))}
   const idx=ARTICLES.indexOf(A), next=MODE.kind==='article'?ARTICLES[idx+1]:null;
   const S=shareInfo(t), full=S.text+'\n'+S.url;
-  let vs='';if(MODE.rival){const r=MODE.rival,w=t<r;vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(t)}</b></span></div><p class="${w?'won':'lost'}">${w?'勝ち！ 相手より '+fmt(r-t)+' 速い':'あと '+fmt(t-r)+'。もう一度いける'}</p>`}
+  // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも丸めてから比べる（同じ表示なのに負けにしない）
+  let vs='';if(MODE.rival){const r=MODE.rival,tr=Math.round(t*10)/10,df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const st=MODE.kind==='daily'?shownStreak():0;
   const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
@@ -456,13 +457,18 @@ function finish(){
   box.querySelector('#copyBtn').onclick=()=>{const sel=()=>{const r=document.createRange();r.selectNodeContents(box.querySelector('#shareTxt'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選んだので、コピーしてね')};
     try{navigator.clipboard.writeText(full).then(()=>toast('コピーした')).catch(sel)}catch(e){sel()}};
   if(next)box.querySelector('#nextArt').onclick=()=>start(next);
-  box.querySelector('#againRun').onclick=()=>start(A,MODE);
+  box.querySelector('#againRun').onclick=()=>start(A,again());
   box.querySelector('#toMenu').onclick=menu;
 }
-// mode：{kind:'article'} ふつう／{kind:'daily',day} 今日の1本（日の番号で乱数を決める）／rival があれば挑戦状
+// mode：{kind:'article',seed} ふつう（seed で並びを決め、挑戦状のリンクに入れる）／{kind:'daily',day} 今日の1本（日の番号で乱数を決める）／rival があれば挑戦状
+const newSeed=()=>1+Math.floor(Math.random()*2147483646);
+const okSeed=s=>Number.isInteger(s)&&s>=1&&s<2147483647;
+// もう一度：今日の1本と挑戦状は同じ並び、ふつうの記事は新しい並び
+const again=()=>MODE.kind==='article'&&!MODE.rival?{kind:'article'}:MODE;
 function start(a,mode={kind:'article'}){
+  if(mode.kind==='article'&&!okSeed(mode.seed))mode={...mode,seed:newSeed()};
   stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];
-  R=mode.kind==='daily'?seeded(mode.day):Math.random;
+  R=seeded(mode.kind==='daily'?mode.day:mode.seed);
   ORDER=pickOrder(a);$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
@@ -496,14 +502,14 @@ function menu(){
 function fromLink(){
   let q;try{q=new URLSearchParams(location.search)}catch(e){return false}
   const t=Number(q.get('t')), rival=t>0&&t<10000?Math.round(t*10)/10:0;
-  const d=Number(q.get('d')), a=ARTICLES.find(x=>x.id===q.get('a'));
+  const d=Number(q.get('d')), a=ARTICLES.find(x=>x.id===q.get('a')), seed=Number(q.get('s'));
   try{if(q.has('d')||q.has('a'))history.replaceState(null,'',location.pathname)}catch(e){}
   if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),{kind:'daily',day:d,rival});return true}
-  if(a){start(a,{kind:'article',rival});return true}
+  if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0});return true}
   return false;
 }
 $('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(h&&h.hidden){h.hidden=false;hints++;pen+=5;used[n]=true;toast('+5秒')}};
-$('#againBtn').onclick=()=>start(A,MODE);
+$('#againBtn').onclick=()=>start(A,again());
 $('#menuBtn').onclick=menu;
 if(!fromLink())menu();
 </script>
