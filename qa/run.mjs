@@ -391,7 +391,7 @@ if (browser) try {
     check("記録：読み切った回数と閉じた広告の枚数が増える", dx.st.clear === 1 && dx.st.closed === 7, JSON.stringify(dx.st));
     check("メニューの図鑑のボタンに、見つけた数（7/19）が出る", dx.btn.includes("7/19"), dx.btn);
     await p.click("#dexBtn");
-    const dt = await p.evaluate(() => { const known = Object.keys(JSON.parse(localStorage.getItem("xdoko-dex"))); return { txt: document.querySelector("#stage .card").textContent, names: known.map((k) => TYPES[k].name), unknown: [...document.querySelectorAll(".dex .no")].length }; });
+    const dt = await p.evaluate(() => { const known = Object.keys(JSON.parse(localStorage.getItem("xdoko-dex"))); return { txt: document.querySelector("#stage .card").textContent, names: known.map((k) => TYPES[k].name), unknown: [...document.querySelectorAll(".dex:not(.ach) .no")].length }; });
     check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 12 && dt.txt.includes("広告図鑑 7/19"), dt.unknown);
     check("図鑑の画面に記録（読み切った・閉じた広告・感染・連続・メダル）が出る", ["読み切った1回", "閉じた広告7枚", "感染した0回", "連続の最高", "メダル"].every((w) => dt.txt.includes(w)), dt.txt.slice(-80));
     await p.click("#dexBack");
@@ -515,6 +515,28 @@ if (browser) try {
     check("ロングでまちがえると、何枚まで閉じたかとベストの枚数が出る（ベストは下がらない）", lf.how.includes("広告 1/12枚まで閉じた") && lf.how.includes("ベスト 3枚") && lf.n === "3", JSON.stringify(lf));
     await p.goto(url + "?a=long&t=120&s=77&h=1"); await p.waitForTimeout(200);
     check("ロングの挑戦状のリンクで、同じ並び（s）のロングが始まる（上級にはならない）", (await p.textContent("#stage .card")).includes("ロング") && (await p.evaluate(() => A === LONG && MODE.seed === 77 && !MODE.hard)));
+    await p.close();
+  }
+
+  // 5h. 実績：記録から数える。新しく取れた実績は結果に出る。図鑑の画面に一覧（まだのものも条件を見せる）
+  {
+    const p = await open({ unlock: false });
+    const a0 = await p.evaluate(() => ({ got: achGot(), n: ACH.length, ids: new Set(ACH.map((x) => x[0])).size }));
+    check("実績は15個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 15 && a0.ids === 15 && a0.got.length === 0, JSON.stringify(a0));
+    await p.click('.lv[data-i="0"]'); await p.click("#go"); await playOn(p, "記事1");
+    const r1 = await p.evaluate(() => document.querySelector("#achNew")?.textContent || "");
+    check("はじめて読み切ると、結果に新しい実績（はじめて読み切った・ヒントなし）が出る", r1.includes("はじめて読み切った") && r1.includes("ヒントなし"), r1);
+    await p.click("#againRun"); await p.click("#go"); await playOn(p, "記事1");
+    check("同じ実績は2回目には出ない", !(await p.evaluate(() => document.querySelector("#achNew")?.textContent || "").then((t) => t.includes("はじめて読み切った"))));
+    const st = await p.evaluate(() => { localStorage.setItem("xdoko-streak", JSON.stringify({ last: 1, count: 7, max: 7 })); localStorage.setItem("xdoko-long-n", "12"); return achGot(); });
+    check("7日連続・ロング完走などは、今の記録から数える", ["streak3", "streak7", "long6", "long12"].every((k) => st.includes(k)), st.join());
+    await p.evaluate(() => menu());
+    check("メニューの図鑑のボタンに、実績の数が出る", (await p.textContent("#dexBtn")).includes("実績 " + st.length + "/15"), await p.textContent("#dexBtn"));
+    await p.click("#dexBtn");
+    const dv = await p.evaluate(() => ({ got: document.querySelectorAll(".ach > div:not(.no)").length, no: document.querySelectorAll(".ach > .no").length, txt: document.querySelector(".ach").textContent }));
+    check("図鑑の画面に実績の一覧があり、まだのものも条件が見える", dv.got === st.length && dv.no === 15 - st.length && dv.txt.includes("上級で金メダル"), JSON.stringify(dv).slice(0, 200));
+    await p.goto(url + "?a=recipe&t=999&s=5"); await p.waitForTimeout(200); await p.click("#go"); await playOn(p, "挑戦状");
+    check("挑戦状の相手に勝つと、実績「挑戦状に勝つ」が取れる", await p.evaluate(() => achGot().includes("rival")));
     await p.close();
   }
 

@@ -149,6 +149,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .dex .no{color:var(--muted)}
 .dex .pr{display:block;width:100%;min-height:44px;margin-top:6px;border:1px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-weight:800;cursor:pointer}
 .practice{color:#fff;font-size:13px;margin:0;text-align:center}
+.achnew{background:#fff6d6;border:1px solid #e8c95a;border-radius:8px;padding:8px;font-weight:800;font-size:14px;margin:8px 0}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;margin:6px 0 12px}
 .stats span{background:var(--paper);border-radius:8px;padding:8px}
 .stats b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
@@ -413,6 +414,25 @@ function nextMedal(t,a,h){const g=goldOf(a,h);if(t<=g)return '';const s=t<=g*1.4
 function getJ(k,d){try{return JSON.parse(store.get(k))||d}catch(e){return d}}
 const dex=()=>getJ('xdoko-dex',{}), stats=()=>getJ('xdoko-stats',{clear:0,closed:0,virus:0});
 function bump(k){const s=stats();s[k]=(s[k]||0)+1;store.set('xdoko-stats',JSON.stringify(s))}
+// 実績：長く遊ぶための目標。いまの記録から毎回数える（新しく残すのは「ヒントなし」と「挑戦状に勝った」だけ）
+const ACH=[
+ ['first','はじめて読み切った','記事を1本読み切る',()=>(stats().clear||0)>=1],
+ ['nohint','ヒントなし','ヒントを見ずに読み切る',()=>store.get('xdoko-nohint')==='1'],
+ ['all','全部の記事','ふつうの記事を全部読み切る',()=>ARTICLES.every(a=>cleared(a.id))],
+ ['gold1','はじめての金','どれかの記事で金メダル',()=>ARTICLES.some(a=>medal(best(a.id),a,false)==='🥇')],
+ ['goldAll','金をそろえる','ふつうの全部の記事で金メダル',()=>ARTICLES.every(a=>medal(best(a.id),a,false)==='🥇')],
+ ['hard1','上級デビュー','上級を1本読み切る',()=>ARTICLES.some(a=>bestH(a.id)>0)],
+ ['hardGold','上級の金','上級で金メダル',()=>ARTICLES.some(a=>medal(bestH(a.id),a,true)==='🥇')],
+ ['long6','ロング半分','ロングで6枚閉じる',()=>longN()>=6],
+ ['long12','ロング完走','ロングを読み切る',()=>longN()>=12],
+ ['streak3','3日連続','今日の1本を3日続けて読み切る',()=>(streak().max||0)>=3],
+ ['streak7','7日連続','今日の1本を7日続けて読み切る',()=>(streak().max||0)>=7],
+ ['dex10','図鑑10種類','10種類の広告を閉じる',()=>Object.keys(dex()).filter(k=>TYPES[k]).length>=10],
+ ['dexAll','図鑑コンプリート','全部の種類の広告を閉じる',()=>Object.keys(TYPES).every(k=>dex()[k])],
+ ['closed100','広告100枚','広告を合わせて100枚閉じる',()=>(stats().closed||0)>=100],
+ ['rival','挑戦状に勝つ','挑戦状の相手より速く読み切る',()=>store.get('xdoko-won')==='1'],
+];
+const achGot=()=>ACH.filter(x=>{try{return x[3]()}catch(e){return false}}).map(x=>x[0]);
 function found(type,hint){const d=dex(),e=d[type]||{n:0,clean:false};e.n++;if(!hint)e.clean=true;d[type]=e;store.set('xdoko-dex',JSON.stringify(d))}
 // ベストとの差（スピードランの区間タイムと同じ考え方）：自己ベストのときに広告を閉じた時刻を覚え、次から閉じるたびに比べる。今日の1本は日ごとに並びが変わるので、記事を読むときだけ
 const spKey=()=>MODE.kind==='article'&&A?'xdoko-split-'+A.id+(MODE.hard?'-h':''):'';
@@ -522,6 +542,7 @@ function shareInfo(t){
 }
 function finish(){
   stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
+  const had=achGot();if(!hints)store.set('xdoko-nohint','1');
   let b,nb;
   if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
@@ -533,10 +554,10 @@ function finish(){
   const md=medal(t,A,MODE.hard), nm=nextMedal(t,A,MODE.hard);
   const S=shareInfo(t), full=S.text+'\n'+S.url;
   // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
-  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
+  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';if(res==='won')store.set('xdoko-won','1');vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const st=MODE.kind==='daily'?shownStreak():0;
-  const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
+  const st=MODE.kind==='daily'?shownStreak():0, fresh=ACH.filter(x=>achGot().includes(x[0])&&!had.includes(x[0]));
+  const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
    <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>
    <p class="sec">結果を送る・挑戦状にする</p>
    <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
@@ -585,7 +606,7 @@ function menu(){
    <p class="total">${all?ARTICLES.length+'本の合計ベスト '+fmt(sum):ARTICLES.length+'本読み切ると合計タイムが出ます'}</p>
    <p class="sec">ロング（3本つなぎ・広告12枚・先ほど難しい）</p>
    <div class="levels"><button class="lv long" type="button" id="longBtn"${long3?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${long3?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'記事1〜3を読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
-   <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・記録</button>
+   <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・実績 ${achGot().length}/${ACH.length}</button>
    <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button>
    ${fbLink('fbMenu')}
    <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
@@ -605,6 +626,8 @@ function showDex(){
   const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
   const box=el(`<div class="card"><h3>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}${got?'<br>「練習」で、時間を気にせず何度でも試せます。':''}</p>
    <div class="dex">${ks.map(k=>{const T=TYPES[k],e=d[k],star='★'.repeat(T.lv);return e?`<div><b>${T.name} <small>${star}</small></b>${T.hint}<br><small>閉じた ${e.n}回${e.clean?'・ヒントなしで閉じた':''}</small><button class="pr" type="button" data-pr="${k}">練習</button></div>`:`<div class="no"><b>？？？ <small>${star}</small></b>まだ出会っていない</div>`}).join('')}</div>
+   <p class="sec">実績 ${achGot().length}/${ACH.length}</p>
+   <div class="dex ach">${(g=>ACH.map(x=>g.includes(x[0])?`<div><b>🏅 ${x[1]}</b>${x[2]}</div>`:`<div class="no"><b>？ ${x[1]}</b>${x[2]}</div>`).join(''))(achGot())}</div>
    <p class="sec">記録</p>
    <div class="stats"><span>読み切った<b>${st.clear||0}回</b></span><span>閉じた広告<b>${st.closed||0}枚</b></span><span>感染した<b>${st.virus||0}回</b></span><span>連続の最高<b>${s.max||0}日</b></span><span style="grid-column:1/-1">メダル<b>🥇${medals['🥇']||0}　🥈${medals['🥈']||0}　🥉${medals['🥉']||0}</b></span></div>
    <button class="big" id="dexBack" type="button">メニューへ</button></div>`);
