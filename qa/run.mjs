@@ -189,6 +189,10 @@ if (browser) try {
     await p.click("#copyBtn"); await p.waitForTimeout(200);
     const copied = await p.evaluate(() => navigator.clipboard.readText().catch(() => getSelection().toString()));
     check("「結果をコピー」で結果の文がそのままコピーされる（だめなら選ばれる）", copied.trim() === share.trim(), copied);
+    const order = await p.evaluate(() => { const all = [...document.querySelectorAll("#stage .card button, #stage .card a")].map((x) => x.id); return { again: all.indexOf("againRun"), x: all.indexOf("xBtn"), inBox: !!document.querySelector("#sendBox #shareTxt") }; });
+    check("結果の画面は、次へ・もう一度・メニューが共有より先に来て、送る文はたたんだ中にある", order.again >= 0 && order.again < order.x && order.inBox, JSON.stringify(order));
+    const wb = await p.evaluate(() => { return getComputedStyle(document.querySelector(".article h2")).wordBreak; });
+    check("記事の見出しは文節の切れ目で折り返す（word-break: auto-phrase）", wb === "auto-phrase", wb);
     await p.click("#toMenu");
     check("記事1を読み切ると記事2が開き、ベストが残る", !(await p.isDisabled('.lv[data-i="1"]')) && /秒/.test(await p.textContent('.lv[data-i="0"] .bt')));
     const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); menu(); return document.querySelector("#stage .card").textContent; });
@@ -335,6 +339,11 @@ if (browser) try {
       return { i, min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length, want: hardOf(A).ads - (A.vignette ? 1 : 0) }; }, i));
     const tightH = gapsH.filter((g) => g.min < H * 0.75 || g.n !== g.want);
     check("上級でも、関所を20回置き直して広告の間はいつも0.75画面以上・数がそろう", tightH.length === 0, tightH.map((g) => `記事${g.i + 1}:${Math.round(g.min)}px n=${g.n}/${g.want}`).join(","));
+    // まだどれも読み切っていないときは、鍵のかかった上級を並べず1行の案内だけ
+    await p.evaluate(() => { localStorage.clear(); menu(); });
+    check("まだ読み切った記事が無いとき、上級は1行の案内だけ（鍵のかかった6つを並べない）", (await p.isVisible("#hardNote")) && !(await p.isVisible('.lv[data-h="0"]')));
+    await p.evaluate(() => { localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } })); fail("検査"); showDex(); });
+    check("感染の画面のあとに図鑑を開いても、感染の画面が残らない", await p.evaluate(() => document.querySelector("#virus").hidden) && (await p.isVisible(".dex")));
     // 解放：ふつうで読み切った記事だけ上級が開く
     await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-best-recipe", "25.0"); menu(); });
     check("上級は、ふつうで読み切った記事だけ開く", !(await p.isDisabled('.lv[data-h="0"]')) && (await p.isDisabled('.lv[data-h="1"]')) && (await p.isDisabled('.lv[data-h="2"]')));

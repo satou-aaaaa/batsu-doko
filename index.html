@@ -54,6 +54,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .sitebar i{width:22px;height:22px;border-radius:6px;background:var(--site);display:inline-block}
 .crumb{font-size:12px;color:var(--muted)}
 .article h2{font-size:22px;line-height:1.45;color:var(--ink);margin:6px 0 4px;text-wrap:balance}
+/* 日本語の見出しや広告の大きな文字を、文節の切れ目で折り返す（「作/る」のように語の途中で切らない） */
+.article h2,.article h4,.ad h3,.card h3,.card p{word-break:auto-phrase}
 .meta{font-size:12px;color:var(--muted);margin-bottom:14px}
 .article h4{color:var(--ink);font-size:17px;margin:28px 0 8px}
 .article p{margin:0 0 16px}
@@ -118,7 +120,12 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .lv .t{flex:1;min-width:0}
 .lv small{display:block;color:var(--muted);font-weight:400}
 .lv .bt{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted)}
-.share{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;text-align:left;white-space:pre-wrap;margin:12px 0}
+.share{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:13px;text-align:left;white-space:pre-wrap;margin:8px 0 0}
+.sendbox{margin:14px 0 4px;text-align:left}
+.sendbox summary{display:flex;align-items:center;justify-content:center;min-height:44px;font-weight:800;font-size:14px;color:var(--ink);cursor:pointer;list-style:none;border-top:1px solid var(--line)}
+.sendbox summary::-webkit-details-marker{display:none}
+.sendbox summary::after{content:'▾';margin-left:6px;color:var(--muted)}
+.sendbox[open] summary::after{content:'▴'}
 .btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .btn2{background:var(--ink)}
 .total{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -143,7 +150,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:13px;margin:6px 0 12px}
 .stats span{background:var(--paper);border-radius:8px;padding:8px}
 .stats b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
-.sec{font-size:12px;color:var(--muted);font-weight:800;text-align:left;margin:14px 0 0}
+.sec{font-size:12px;color:var(--muted);font-weight:800;text-align:left;margin:20px 0 0}
 .grid{font-size:22px;letter-spacing:2px;margin:6px 0 0}
 .vs{display:flex;justify-content:center;gap:10px;margin:10px 0 4px;font-variant-numeric:tabular-nums}
 .vs span{flex:1;background:var(--paper);border-radius:8px;padding:8px;font-size:12px;color:var(--muted)}
@@ -494,14 +501,15 @@ function finish(){
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const st=MODE.kind==='daily'?shownStreak():0;
   const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
-   <div class="share" id="shareTxt"></div>
+   <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>
+   <p class="sec">結果を送る（リンクを開いた人は同じ並びで挑戦できる）</p>
    <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
-   <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>${fbLink('fbRes')}${nb?kofiLine():''}</div>`);
+   <details class="sendbox" id="sendBox"><summary>送る文を見る</summary><div class="share" id="shareTxt"></div></details>${fbLink('fbRes')}${nb?kofiLine():''}</div>`);
   stage.appendChild(box);box.querySelector('#shareTxt').textContent=full;
   box.querySelector('#xBtn').href='https://x.com/intent/post?text='+encodeURIComponent(S.text)+'&url='+encodeURIComponent(S.url);
   box.querySelector('#lineBtn').href='https://line.me/R/share?text='+encodeURIComponent(full);
   const sb=box.querySelector('#shareBtn');if(sb)sb.onclick=()=>navigator.share({text:S.text,url:S.url}).catch(()=>{});
-  box.querySelector('#copyBtn').onclick=()=>{const sel=()=>{const r=document.createRange();r.selectNodeContents(box.querySelector('#shareTxt'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選んだので、コピーしてね')};
+  box.querySelector('#copyBtn').onclick=()=>{const sel=()=>{box.querySelector('#sendBox').open=true;const r=document.createRange();r.selectNodeContents(box.querySelector('#shareTxt'));getSelection().removeAllRanges();getSelection().addRange(r);toast('選んだので、コピーしてね')};
     try{navigator.clipboard.writeText(full).then(()=>toast('コピーした')).catch(sel)}catch(e){sel()}};
   if(next)box.querySelector('#nextArt').onclick=()=>start(next,{kind:'article',hard:!!MODE.hard});
   box.querySelector('#againRun').onclick=()=>start(A,again());
@@ -537,7 +545,7 @@ function menu(){
    <p class="sec">記事を順に読む</p>
    <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
    <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
-   <div class="levels">${ARTICLES.map((a,i)=>{const lock=!cleared(a.id);return `<button class="lv hard" type="button" data-h="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'ふつうで読み切ると開く':'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`}).join('')}</div>
+   ${ARTICLES.some(a=>cleared(a.id))?'':'<p class="total" id="hardNote">ふつうで読み切った記事から、上級が開きます</p>'}<div class="levels"${ARTICLES.some(a=>cleared(a.id))?'':' hidden'}>${ARTICLES.map((a,i)=>{const lock=!cleared(a.id);return `<button class="lv hard" type="button" data-h="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'ふつうで読み切ると開く':'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`}).join('')}</div>
    <p class="total">${all?'3本の合計ベスト '+fmt(sum):'3本読み切ると合計タイムが出ます'}</p>
    <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・記録</button>
    <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button>
@@ -553,7 +561,7 @@ function menu(){
 }
 // 広告図鑑：閉じたことのある広告の名前と閉じ方。まだの広告は難しさだけ見せる。下に記録
 function showDex(){
-  stop();stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';
   const d=dex(), st=stats(), ks=Object.keys(TYPES), got=ks.filter(k=>d[k]).length, s=streak();
   const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
   const box=el(`<div class="card"><h3>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}${got?'<br>「練習」で、時間を気にせず何度でも試せます。':''}</p>
