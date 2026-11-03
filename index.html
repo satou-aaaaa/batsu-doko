@@ -132,6 +132,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .how{display:flex;justify-content:center;gap:6px;margin:12px 0 2px;font-size:12px;color:var(--muted);font-weight:700}
 .how span{flex:1;background:var(--paper);border-radius:8px;padding:8px 4px;line-height:1.4}
 .how b{display:block;font-size:20px;color:var(--ink)}
+.goal{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;min-height:52px;margin:10px 0 0;padding:8px 14px;border:2px solid var(--ink);border-radius:12px;background:var(--card);color:var(--ink);font:800 15px var(--body);text-align:left;cursor:pointer}
+.goal small{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
 .daily{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-radius:12px;background:var(--ink);color:#fff;padding:14px;margin:14px 0 4px;cursor:pointer;font:800 16px var(--body);box-shadow:0 4px 0 var(--hot)}
 .daily .t{flex:1;min-width:0}
 .daily small{display:block;font-weight:400;font-size:12px;color:#c9cfdb;margin-top:2px}
@@ -595,6 +597,18 @@ function start(a,mode={kind:'article'}){
   box.querySelector('#go').onclick=()=>{stage.innerHTML='';stage.hidden=true;page.classList.remove('lock');running=true;t0=performance.now();tick();SND.close();check()};
   page.classList.add('lock');
 }
+// 次の目標：まだ読み切っていない記事 → 金がまだの記事 → 上級 → ロング の順に1つだけ見せる（押すとすぐ始まる）。まだ1本も読み切っていない人には出さない
+function nextGoal(){
+  if(!ARTICLES.some(a=>cleared(a.id)))return null;
+  const i=ARTICLES.findIndex(a=>!cleared(a.id));
+  if(i>=0)return {txt:`つづき：記事${i+1}「${ARTICLES[i].site}」`,sub:'まだ読み切っていない記事',go:()=>start(ARTICLES[i])};
+  const g=ARTICLES.find(a=>medal(best(a.id),a,false)!=='🥇');
+  if(g)return {txt:`金をねらう：記事${ARTICLES.indexOf(g)+1}「${g.site}」`,sub:`ベスト ${fmt(best(g.id))}・金は ${fmt(g.gold)} 以内`,go:()=>start(g)};
+  const h=ARTICLES.find(a=>!bestH(a.id));
+  if(h)return {txt:`上級に挑む：記事${ARTICLES.indexOf(h)+1}「${h.site}」`,sub:'難しい広告だけ・ヒントなし',go:()=>start(h,{kind:'article',hard:true})};
+  if(longN()<12)return {txt:'ロングを読み切る',sub:`最高 ${longN()}/12枚`,go:()=>start(LONG)};
+  return null;
+}
 function menu(){
   stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
   stage.className='menu';stage.hidden=false;stage.innerHTML='';
@@ -602,6 +616,7 @@ function menu(){
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
    <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
    <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}${hardDay(d)?' <span class="streak">上級の日</span>':''}<small>${hardDay(d)?'日曜は難しい広告だけ・ヒントなし':'みんな同じ広告の並び'}${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
+   ${(g=>g?`<button class="goal" id="goalBtn" type="button"><span>▶ ${g.txt}</span><small>${g.sub}</small></button>`:'')(nextGoal())}
    <p class="sec">記事を順に読む</p>
    <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
    <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
@@ -614,6 +629,7 @@ function menu(){
    ${fbLink('fbMenu')}
    <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
   stage.appendChild(box);
+  const gb=box.querySelector('#goalBtn');if(gb)gb.onclick=()=>nextGoal().go();
   box.querySelector('#dailyBtn').onclick=()=>start(dailyArt(d),dailyMode(d));
   box.querySelectorAll('.lv[data-i]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
   box.querySelectorAll('.lv[data-h]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.h],{kind:'article',hard:true})});

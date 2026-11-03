@@ -556,6 +556,21 @@ if (browser) try {
     await p.close();
   }
 
+  // 5j. 次の目標のボタン：つづき → 金 → 上級 → ロング の順に1つだけ
+  {
+    const p = await open({ unlock: false });
+    const g = async (setup) => p.evaluate((setup) => { localStorage.clear(); for (const [k, v] of Object.entries(setup)) localStorage.setItem(k, v); menu(); const b = document.querySelector("#goalBtn"); return b ? { t: b.textContent, h: b.offsetHeight } : null; }, setup);
+    const all = (v) => ({ "xdoko-best-recipe": v, "xdoko-best-travel": v, "xdoko-best-news": v, "xdoko-best-review": v });
+    const r0 = await g({}), r1 = await g({ "xdoko-best-recipe": "25.0" }), r2 = await g(all("99.0")), r3 = await g(all("10.0")),
+      r4 = await g({ ...all("10.0"), "xdoko-best-recipe-h": "20.0", "xdoko-best-travel-h": "20.0", "xdoko-best-news-h": "20.0", "xdoko-best-review-h": "20.0" });
+    check("次の目標：まだ1本も読み切っていなければ出ない", r0 === null, JSON.stringify(r0));
+    check("次の目標：読み切っていない記事 → 金がまだの記事 → 上級 → ロング の順に出る（高さ44px以上）",
+      r1?.t.includes("つづき：記事2") && r2?.t.includes("金をねらう：記事1") && r3?.t.includes("上級に挑む：記事1") && r4?.t.includes("ロングを読み切る") && [r1, r2, r3, r4].every((x) => x.h >= 44), JSON.stringify([r1, r2, r3, r4]));
+    await g({ "xdoko-best-recipe": "25.0" }); await p.click("#goalBtn");
+    check("次の目標のボタンを押すと、その記事がすぐ始まる", (await p.textContent("#stage .card")).includes("記事2"));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
