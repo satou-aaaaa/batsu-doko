@@ -74,7 +74,7 @@ if (browser) try {
     const d = await p.evaluate(() => ({ arts: ARTICLES.map((a) => ({ id: a.id, ads: a.ads, lv: a.lv, v: a.vignette })), types: Object.entries(TYPES).map(([k, t]) => ({ k, lv: t.lv, hint: !!t.hint })) }));
     check("記事が3本（レシピ→旅行→ニュース）", d.arts.map((a) => a.id).join() === "recipe,travel,news");
     check("先の記事ほど広告が多い", d.arts.every((a, i) => i === 0 || a.ads > d.arts[i - 1].ads), d.arts.map((a) => a.ads));
-    check("広告の種類が16あり、どれにもヒントがある", d.types.length === 16 && d.types.every((t) => t.hint), d.types.length);
+    check("広告の種類が19あり、どれにもヒントがある", d.types.length === 19 && d.types.every((t) => t.hint), d.types.length);
     for (const lv of [1, 2, 3]) {
       const pool = d.types.filter((t) => t.lv <= lv).length, need = d.arts.find((a) => a.lv === lv).ads;
       check(`難しさ${lv}の記事は、選べる種類（${pool}）が広告の数（${need}）以上`, pool >= need);
@@ -133,7 +133,15 @@ if (browser) try {
       await p.evaluate((t) => { ORDER[n] = t; openAd(); }, t);
       try { await solve(p); if (await adOpen(p)) fails.push(t); } catch (e) { fails.push(t + ":" + e.message); }
     }
-    check("広告の全16種類を、正しい手順で閉じられる", fails.length === 0, fails.join(","));
+    check("広告の全19種類を、正しい手順で閉じられる", fails.length === 0, fails.join(","));
+    // 新しく足した広告は、わなを押すと感染する
+    const traps = { faint: "#stage .big", cookie: "#stage .prim", survey: "#stage .x.fake" }, trapNg = [];
+    for (const [t, sel] of Object.entries(traps)) {
+      await p.evaluate((t) => { start(ARTICLES[2]); document.querySelector("#go").click(); ORDER[n] = t; openAd(); }, t);
+      await p.click(sel); await p.waitForTimeout(80);
+      if (!(await p.isVisible("#virus"))) trapNg.push(t);
+    }
+    check("うすい「閉じる」・クッキーの同意・アンケートは、わな（大きなボタン・すべて同意・右上の×）を押すと感染する", trapNg.length === 0, trapNg.join(","));
     await p.close();
   }
 
@@ -328,9 +336,9 @@ if (browser) try {
       for (const a of ARTICLES) { const h = hardOf(a); MODE = { kind: "article", hard: true }; A = a;
         for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(h); if (o.length !== a.ads || new Set(o).size !== o.length || o.some((t) => TYPES[t].lv < 2) || o.filter((t) => TYPES[t].lv === 3).length < 2) { bad.push(a.id + ":" + o.join()); break; } } }
       MODE = { kind: "article" };
-      return { names: names.length === 16 && new Set(names).size === 16 && names.every(Boolean), bad, gold: ARTICLES.every((a) => a.gold > 0 && a.goldH > a.gold) };
+      return { names: names.length === 19 && new Set(names).size === 19 && names.every(Boolean), bad, gold: ARTICLES.every((a) => a.gold > 0 && a.goldH > a.gold) };
     });
-    check("広告の16種類それぞれに、図鑑に出す名前がある（重ならない）", shape.names);
+    check("広告の19種類それぞれに、図鑑に出す名前がある（重ならない）", shape.names);
     check("上級の広告の組み合わせを記事ごとに500回作って、どれも同じ枚数・重なりなし・★2以上だけ・★3が2枚以上", shape.bad.length === 0, shape.bad.join(" / "));
     check("どの記事にも金メダルの目安タイムがあり、上級のほうが長い", shape.gold);
     const gapsH = [];
@@ -381,10 +389,10 @@ if (browser) try {
     const dx = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem("xdoko-dex") || "{}"), st = JSON.parse(localStorage.getItem("xdoko-stats") || "{}"); menu(); return { types: Object.keys(d).length, clean: Object.values(d).every((e) => e.clean && e.n >= 1), st, btn: document.querySelector("#dexBtn").textContent }; });
     check("閉じた広告が図鑑に入り（7種類）、ヒントなしの印が付く", dx.types === 7 && dx.clean, JSON.stringify(dx));
     check("記録：読み切った回数と閉じた広告の枚数が増える", dx.st.clear === 1 && dx.st.closed === 7, JSON.stringify(dx.st));
-    check("メニューの図鑑のボタンに、見つけた数（7/16）が出る", dx.btn.includes("7/16"), dx.btn);
+    check("メニューの図鑑のボタンに、見つけた数（7/19）が出る", dx.btn.includes("7/19"), dx.btn);
     await p.click("#dexBtn");
     const dt = await p.evaluate(() => { const known = Object.keys(JSON.parse(localStorage.getItem("xdoko-dex"))); return { txt: document.querySelector("#stage .card").textContent, names: known.map((k) => TYPES[k].name), unknown: [...document.querySelectorAll(".dex .no")].length }; });
-    check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 9 && dt.txt.includes("広告図鑑 7/16"), dt.unknown);
+    check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 12 && dt.txt.includes("広告図鑑 7/19"), dt.unknown);
     check("図鑑の画面に記録（読み切った・閉じた広告・感染・連続・メダル）が出る", ["読み切った1回", "閉じた広告7枚", "感染した0回", "連続の最高", "メダル"].every((w) => dt.txt.includes(w)), dt.txt.slice(-80));
     await p.click("#dexBack");
     check("図鑑からメニューへ戻れる", !!(await p.$("#dailyBtn")));
