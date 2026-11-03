@@ -240,7 +240,11 @@ if (browser) try {
     check("その日のベストがすでにあっても、読み切れば連続に数える", sk2.c === 1, sk2.c);
     // 記事の挑戦状：同じ番号（s）なら、何度作っても同じ広告の並び。もう一度はふつうなら新しい並び
     const sv = await p.evaluate(() => {
-      const snap = (s) => { start(ARTICLES[2], { kind: "article", seed: s }); return ORDER.join() + "|" + document.querySelector("#anchorTxt").textContent; };
+      // 並び・関所の置き場所・記事の中の広告・下の広告をまとめて比べる
+      const snap = (s) => { start(ARTICLES[2], { kind: "article", seed: s }); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
+        const g = [...document.querySelectorAll(".gate")].map((x) => x.dataset.i + "@" + x.previousElementSibling.textContent.length).join(); if (p2) p2.hidden = true;
+        const ads = [...document.querySelectorAll("#art .inad span")].map((x) => x.textContent).join();
+        return ORDER.join() + "|" + g + "|" + ads + "|" + document.querySelector("#anchorTxt").textContent; };
       const a = snap(12345), same = Array.from({ length: 100 }, () => snap(12345)).every((x) => x === a);
       const diff = new Set(Array.from({ length: 30 }, (_, i) => snap(i + 1))).size;
       start(ARTICLES[0]); const s1 = MODE.seed; start(ARTICLES[0], again()); const s2 = MODE.seed;
@@ -262,8 +266,9 @@ if (browser) try {
     await p.click("#go"); const vs = await p.evaluate(() => { t0 = performance.now() - 4000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; });
     check("挑戦状の相手より速ければ「勝ち」が出る", vs.includes("勝ち") && vs.includes("12.3秒"), vs);
     // 相手は0.1秒に丸めてある。同じ表示（12.3秒）なら負けにせず「同タイム」
-    const tie = await p.evaluate(() => [12.34, 12.26, 12.36].map((x) => { start(A, MODE); running = true; t0 = performance.now() - x * 1000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; }));
-    check("挑戦状：表示が同じタイムなら「同タイム」、0.1秒でも遅ければ「あと 0.1秒」", tie[0].includes("同タイム") && tie[1].includes("同タイム") && tie[2].includes("あと 0.1秒"), tie.map((x) => x.slice(-30)).join(" / "));
+    // 時計を止めて決まった値を返させ、CI の重さで揺れないようにする。12.35 は toFixed(1) で 12.3（時計の表示）になる境目
+    const tie = await p.evaluate(() => { const real = performance.now; try { return [12.34, 12.26, 12.36, 12.35].map((x) => { start(A, MODE); running = true; performance.now = () => x * 1000; t0 = 0; pen = 0; finish(); return document.querySelector("#stage .card").textContent; }); } finally { performance.now = real; } });
+    check("挑戦状：表示が同じタイムなら「同タイム」、0.1秒でも遅ければ「あと 0.1秒」", tie[0].includes("同タイム") && tie[1].includes("同タイム") && tie[2].includes("あと 0.1秒") && tie[3].includes("同タイム") === ((12.35).toFixed(1) === "12.3"), tie.map((x) => x.slice(-30)).join(" / "));
     await p.goto(url + "?a=travel&t=30&s=4242"); await p.waitForTimeout(200);
     const lk = await p.evaluate(() => { const a = ORDER.join(); start(A, { kind: "article", seed: 4242 }); return { seed: MODE.seed, same: a === ORDER.join() }; });
     check("記事の挑戦状のリンク（&s=4242）を開くと、送った人と同じ並びになる", lk.same && lk.seed === 4242, JSON.stringify(lk));

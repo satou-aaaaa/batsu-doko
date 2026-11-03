@@ -442,8 +442,8 @@ function finish(){
   }else{b=best(A.id);nb=!b||t<b;if(nb)store.set('xdoko-best-'+A.id,t.toFixed(1))}
   const idx=ARTICLES.indexOf(A), next=MODE.kind==='article'?ARTICLES[idx+1]:null;
   const S=shareInfo(t), full=S.text+'\n'+S.url;
-  // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも丸めてから比べる（同じ表示なのに負けにしない）
-  let vs='';if(MODE.rival){const r=MODE.rival,tr=Math.round(t*10)/10,df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
+  // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
+  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const st=MODE.kind==='daily'?shownStreak():0;
   const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${vs}
