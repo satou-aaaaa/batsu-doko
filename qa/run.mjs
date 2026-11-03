@@ -388,6 +388,47 @@ if (browser) try {
     await p.close();
   }
 
+  // 5d. ベストとの差（区間タイム）と、図鑑からの練習
+  {
+    const p = await open();
+    const u = await p.evaluate(() => {
+      A = ARTICLES[0]; MODE = { kind: "article", seed: 1 }; ORDER = ["corner", "label", "three", "rate"];
+      localStorage.setItem("xdoko-split-recipe", JSON.stringify([10, 20, 30, 40]));
+      const r = [splitTxt(0, 9.5), splitTxt(1, 20.3), splitTxt(2, 30)];
+      localStorage.setItem("xdoko-split-recipe", JSON.stringify([1, 2])); r.push(splitTxt(0, 5));
+      localStorage.setItem("xdoko-split-recipe", "こわれた"); r.push(splitTxt(0, 5));
+      MODE = { kind: "daily", day: 1 }; r.push(spKey());
+      localStorage.removeItem("xdoko-split-recipe"); MODE = { kind: "article" }; menu(); return r;
+    });
+    check("ベストとの差：速い・おそい・同じを0.1秒で言い分ける", u[0] === "ベストより 0.5秒 速い" && u[1] === "ベストより 0.3秒 おそい" && u[2] === "ベストと同じ", u.slice(0, 3).join(" / "));
+    check("ベストとの差：覚えた数が広告の数と合わない・こわれているときは比べない、今日の1本は比べない", u[3] === "" && u[4] === "" && u[5] === "", JSON.stringify(u.slice(3)));
+    await p.evaluate(() => { window.__T = []; const o = toast; toast = (t, ms) => { __T.push(t); o(t, ms); }; });
+    await play(p, 0);
+    const first = await p.evaluate(() => ({ t: __T.filter((x) => x.startsWith("閉じた")), sp: JSON.parse(localStorage.getItem("xdoko-split-recipe") || "null") }));
+    check("1回目（区間の記録なし）は「閉じた」だけ、自己ベストで広告を閉じた時刻を覚える（4つ・増えていく）",
+      first.t.length === 4 && first.t.every((x) => x === "閉じた") && Array.isArray(first.sp) && first.sp.length === 4 && first.sp.every((x, i) => i === 0 || x >= first.sp[i - 1]), JSON.stringify(first));
+    await p.evaluate(() => { __T.length = 0; menu(); });
+    await play(p, 0);
+    const second = await p.evaluate(() => __T.filter((x) => x.startsWith("閉じた")));
+    check("2回目は、広告を閉じるたびにベストとの差が出る", second.length === 4 && second.every((x) => /^閉じた　ベスト(より [0-9.]+秒 (速い|おそい)|と同じ)$/.test(x)), second.join(" / "));
+    // 練習
+    await p.evaluate(() => { localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true }, swipe: { n: 1, clean: false } })); localStorage.removeItem("xdoko-stats"); showDex(); });
+    const prs = await p.evaluate(() => [...document.querySelectorAll(".dex .pr")].map((b) => [b.dataset.pr, b.offsetHeight]));
+    check("図鑑の見つけた広告にだけ「練習」のボタンがある（高さ44px以上）", prs.length === 2 && prs.every(([, h]) => h >= 44), JSON.stringify(prs));
+    await p.click('[data-pr="swipe"]');
+    const po = await p.evaluate(() => ({ type: document.querySelector("#stage > :first-child")?.dataset.type, tag: document.querySelector("#stage .practice")?.textContent || "" }));
+    check("練習を押すと、その広告が1枚だけ出る", po.type === "swipe" && po.tag.includes("練習：×の無い広告"), JSON.stringify(po));
+    await solve(p); await p.waitForSelector("#prAgain");
+    const pw = await p.evaluate(() => ({ txt: document.querySelector("#stage .card").textContent, st: localStorage.getItem("xdoko-stats"), d: JSON.parse(localStorage.getItem("xdoko-dex")).swipe.n }));
+    check("練習で閉じると「閉じられた！」が出て、記録も図鑑の回数も増えない", pw.txt.includes("閉じられた！") && pw.st === null && pw.d === 1, JSON.stringify(pw));
+    await p.click("#prAgain"); await p.click("#stage .big.fake");
+    const pf = await p.evaluate(() => ({ v: document.querySelector("#virus").hidden, txt: document.querySelector("#stage .card")?.textContent || "", st: localStorage.getItem("xdoko-stats") }));
+    check("練習でまちがえても感染の画面は出ず、閉じ方を見せる（感染の回数も増えない）", pf.v && pf.txt.includes("それは広告の一部でした") && pf.txt.includes("閉じ方：") && pf.st === null, JSON.stringify(pf));
+    await p.click("#prBack");
+    check("練習から図鑑へ戻れる", await p.isVisible(".dex"));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
