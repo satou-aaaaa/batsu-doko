@@ -23,7 +23,8 @@ const errors = [];
 // 外へ出た通信（file:// とデータの読み込みは除く）。記事を遊ぶあいだも全部記録する
 const ALLOW = ["127.0.0.1", "fonts.googleapis.com", "fonts.gstatic.com"];
 const outsideAll = [];
-const watchNet = (p) => p.on("request", (r) => { const u = new URL(r.url()); if (!["file:", "data:", "blob:"].includes(u.protocol) && !ALLOW.includes(u.hostname)) outsideAll.push(r.url()); });
+const recordOutside = (r) => { const u = new URL(r.url()); if (!["file:", "data:", "blob:"].includes(u.protocol) && !ALLOW.includes(u.hostname)) outsideAll.push(r.url()); };
+const watchNet = (p) => p.on("request", recordOutside);
 async function open({ unlock = true } = {}) {
   const p = await browser.newPage({ viewport: { width: W, height: H } });
   p.on("pageerror", (e) => errors.push(e.message)); watchNet(p);
@@ -175,6 +176,7 @@ if (browser) try {
     await play(p, 0);
     const share = await p.textContent("#shareTxt"), shown = await p.textContent("#clock");
     check("結果の文に記事名・広告の枚数・タイムが入る", share.includes("記事1") && share.includes("広告4枚") && share.includes(shown) && share.includes("#×はどこだ"), share);
+    check("結果のタイムは0秒より大きい", parseFloat(shown) > 0, shown);
     await p.context().grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => {});
     await p.click("#copyBtn"); await p.waitForTimeout(200);
     const copied = await p.evaluate(() => navigator.clipboard.readText().catch(() => getSelection().toString()));
@@ -208,8 +210,9 @@ if (browser) try {
     await new Promise((r) => server.listen(0, "127.0.0.1", r));
     const base = `http://127.0.0.1:${server.address().port}/`;
     const ctx = await browser.newContext({ viewport: { width: W, height: H } });
+    ctx.on("request", recordOutside); // context で聞くと、sw.js が出す通信も入る
     try {
-      const p = await ctx.newPage(); watchNet(p);
+      const p = await ctx.newPage();
       await p.goto(base); await p.evaluate(() => navigator.serviceWorker.ready); await p.reload(); await p.waitForTimeout(500);
       check("外へ通信しない（遊んでいるあいだも、文字の Google Fonts だけ）", outsideAll.length === 0, outsideAll.slice(0, 3).join(" "));
       fail5xx = true; await p.reload(); await p.waitForTimeout(300);
