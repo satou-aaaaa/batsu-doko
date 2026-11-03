@@ -72,7 +72,7 @@ if (browser) try {
   {
     const p = await open();
     const d = await p.evaluate(() => ({ arts: ARTICLES.map((a) => ({ id: a.id, ads: a.ads, lv: a.lv, v: a.vignette })), types: Object.entries(TYPES).map(([k, t]) => ({ k, lv: t.lv, hint: !!t.hint })) }));
-    check("記事が4本（レシピ→旅行→ニュース→家電レビュー）", d.arts.map((a) => a.id).join() === "recipe,travel,news,review");
+    check("記事が5本（レシピ→旅行→ニュース→家電レビュー→家計）", d.arts.map((a) => a.id).join() === "recipe,travel,news,review,money");
     check("先の記事ほど広告が多い", d.arts.every((a, i) => i === 0 || a.ads > d.arts[i - 1].ads), d.arts.map((a) => a.ads));
     check("広告の種類が19あり、どれにもヒントがある", d.types.length === 19 && d.types.every((t) => t.hint), d.types.length);
     for (const lv of [1, 2, 3]) {
@@ -99,7 +99,7 @@ if (browser) try {
     check("広告の組み合わせを記事ごとに500回作って、どれも正しい", bad.length === 0, bad.join(" / "));
     // 関所の位置（記事を作り直すたびに、広告の間が1画面の0.75以上あく）
     const gaps = [];
-    for (let i = 0; i < 4; i++) for (let r = 0; r < 20; r++) {
+    for (let i = 0; i < 5; i++) for (let r = 0; r < 20; r++) {
       const g = await p.evaluate((i) => { A = ARTICLES[i]; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
         const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top);
         const ids = [...document.querySelectorAll(".gate")].map((x) => +x.dataset.i);
@@ -116,7 +116,7 @@ if (browser) try {
 
   // 3. 通しで遊ぶ（毎回ちがう組み合わせ）
   const used = new Set();
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     let okRuns = 0, detail = "";
     for (let r = 0; r < RUNS; r++) {
       const p = await open();
@@ -204,8 +204,8 @@ if (browser) try {
     check("記事の見出しは文節の切れ目で折り返す（word-break: auto-phrase）", wb === "auto-phrase", wb);
     await p.click("#toMenu");
     check("記事1を読み切ると記事2が開き、ベストが残る", !(await p.isDisabled('.lv[data-i="1"]')) && /秒/.test(await p.textContent('.lv[data-i="0"] .bt')));
-    const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); localStorage.setItem("xdoko-best-review", "40.0"); menu(); return document.querySelector("#stage .card").textContent; });
-    check("4本読み切ると合計ベストが出る（12.3+20.0+30.4+40.0=102.7秒）", total.includes("4本の合計ベスト 102.7秒"), total);
+    const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); localStorage.setItem("xdoko-best-review", "40.0"); localStorage.setItem("xdoko-best-money", "50.0"); menu(); return document.querySelector("#stage .card").textContent; });
+    check("5本読み切ると合計ベストが出る（12.3+20.0+30.4+40.0+50.0=152.7秒）", total.includes("5本の合計ベスト 152.7秒"), total);
     await p.close();
   }
 
@@ -220,13 +220,13 @@ if (browser) try {
       let bad = [];
       for (let d = 1; d <= 300; d++) { const A = dailyArt(d); start(A, { kind: "daily", day: d }); const top = Math.max(...ORDER.map((t) => TYPES[t].lv));
         if (ORDER.length !== A.ads || new Set(ORDER).size !== ORDER.length || top !== A.lv || ORDER.some((t) => TYPES[t].lv > A.lv)) bad.push(d); }
-      const rot = [1, 2, 3, 4, 5].map((d) => dailyArt(d).id).join();
+      const rot = [1, 2, 3, 4, 5, 6].map((d) => dailyArt(d).id).join();
       menu(); return { same, diff, bad, rot };
     });
     check("今日の1本は、同じ日なら100回作っても同じ広告の並び・置き場所", det.same);
     check("今日の1本は、日がちがえば並びが変わる（30日で25通り以上）", det.diff >= 25, det.diff);
     check("今日の1本を300日ぶん作っても、どの日も枚数・重なりなし・難しさが正しい", det.bad.length === 0, det.bad.slice(0, 5));
-    check("今日の1本の記事は日ごとに 1→2→3→4→1 と回る", det.rot === "recipe,travel,news,review,recipe", det.rot);
+    check("今日の1本の記事は日ごとに 1→2→3→4→5→1 と回る", det.rot === "recipe,travel,news,review,money,recipe", det.rot);
     // 連続記録：前の日に読み切っていれば +1、1日あくと 1 から
     const sk = await p.evaluate(() => {
       const fin = (d) => { window.__XDOKO_DAY = d; start(dailyArt(d), { kind: "daily", day: d }); running = true; t0 = performance.now() - 3000; finish(); return JSON.parse(localStorage.getItem("xdoko-streak")); };
@@ -343,7 +343,7 @@ if (browser) try {
     check("上級の広告の組み合わせを記事ごとに500回作って、どれも同じ枚数・重なりなし・★2以上だけ・★3が2枚以上", shape.bad.length === 0, shape.bad.join(" / "));
     check("どの記事にも金メダルの目安タイムがあり、上級のほうが長い", shape.gold);
     const gapsH = [];
-    for (let i = 0; i < 4; i++) for (let r = 0; r < 20; r++) gapsH.push(await p.evaluate((i) => { A = ARTICLES[i]; MODE = { kind: "article", hard: true }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
+    for (let i = 0; i < 5; i++) for (let r = 0; r < 20; r++) gapsH.push(await p.evaluate((i) => { A = ARTICLES[i]; MODE = { kind: "article", hard: true }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
       const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top); if (p2) p2.hidden = true; MODE = { kind: "article" };
       return { i, min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length, want: hardOf(A).ads - (A.vignette ? 1 : 0) }; }, i));
     const tightH = gapsH.filter((g) => g.min < H * 0.75 || g.n !== g.want);
@@ -561,9 +561,9 @@ if (browser) try {
   {
     const p = await open({ unlock: false });
     const g = async (setup) => p.evaluate((setup) => { localStorage.clear(); for (const [k, v] of Object.entries(setup)) localStorage.setItem(k, v); menu(); const b = document.querySelector("#goalBtn"); return b ? { t: b.textContent, h: b.offsetHeight } : null; }, setup);
-    const all = (v) => ({ "xdoko-best-recipe": v, "xdoko-best-travel": v, "xdoko-best-news": v, "xdoko-best-review": v });
+    const all = (v) => ({ "xdoko-best-recipe": v, "xdoko-best-travel": v, "xdoko-best-news": v, "xdoko-best-review": v, "xdoko-best-money": v });
     const r0 = await g({}), r1 = await g({ "xdoko-best-recipe": "25.0" }), r2 = await g(all("99.0")), r3 = await g(all("10.0")),
-      r4 = await g({ ...all("10.0"), "xdoko-best-recipe-h": "20.0", "xdoko-best-travel-h": "20.0", "xdoko-best-news-h": "20.0", "xdoko-best-review-h": "20.0" });
+      r4 = await g({ ...all("10.0"), "xdoko-best-recipe-h": "20.0", "xdoko-best-travel-h": "20.0", "xdoko-best-news-h": "20.0", "xdoko-best-review-h": "20.0", "xdoko-best-money-h": "20.0" });
     check("次の目標：まだ1本も読み切っていなければ出ない", r0 === null, JSON.stringify(r0));
     check("次の目標：読み切っていない記事 → 金がまだの記事 → 上級 → ロング の順に出る（高さ44px以上）",
       r1?.t.includes("つづき：記事2") && r2?.t.includes("金をねらう：記事1") && r3?.t.includes("上級に挑む：記事1") && r4?.t.includes("ロングを読み切る") && [r1, r2, r3, r4].every((x) => x.h >= 44), JSON.stringify([r1, r2, r3, r4]));
@@ -588,7 +588,7 @@ if (browser) try {
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
-    for (const i of [0, 1, 2, 3]) { await startArt(p, i); sw = Math.max(sw, await p.evaluate(() => document.documentElement.scrollWidth)); await p.evaluate(() => menu()); }
+    for (const i of [0, 1, 2, 3, 4]) { await startArt(p, i); sw = Math.max(sw, await p.evaluate(() => document.documentElement.scrollWidth)); await p.evaluate(() => menu()); }
     check("スマホ幅（390px）で横にはみ出さない", sw <= W, sw);
     await p.click("#menuSound"); check("記事を選ぶ画面の音ボタンで切り替わり、覚えている", (await p.evaluate(() => localStorage.getItem("xdoko-sound"))) === "off");
     await p.close();
