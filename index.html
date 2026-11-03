@@ -383,6 +383,9 @@ let A=null, ORDER=[], n=0, V=-1, hints=0, t0=0, pen=0, running=false, raf=0, inA
 // 今日の番号（日本時間。2026-11-03 が #1）。検査では window.__XDOKO_DAY で日を決められる
 const DAY0=Date.UTC(2026,10,3)/864e5;
 const today=()=>Number.isInteger(window.__XDOKO_DAY)?window.__XDOKO_DAY:Math.floor((Date.now()+9*36e5)/864e5)-DAY0+1;
+// 日曜（#6・#13…）は「上級の日」：難しい広告だけ・ヒントなし。曜日で遊び方が変わると、毎日の1本に変化が出る
+const hardDay=d=>(d+1)%7===0;
+const dailyMode=(d,rival)=>({kind:'daily',day:d,hard:hardDay(d),rival:rival||0});
 const dailyArt=d=>ARTICLES[((d-1)%ARTICLES.length+ARTICLES.length)%ARTICLES.length];
 const SITE='https://satou-aaaaa.github.io/batsu-doko/';
 // 感想：押したときに GitHub の感想フォームが開くだけ（ページからは何も送らない）。週1で読んで直す（shared-workflows routines/game-feedback.md）
@@ -534,8 +537,8 @@ function virus(why,how){
 function shareInfo(t){
   const grid=ORDER.map((_,i)=>used[i]?'💡':'✅').join('');
   if(MODE.kind==='daily'){const st=shownStreak();
-    return {grid,title:`今日の1本 #${MODE.day}`,url:`${baseUrl()}?d=${MODE.day}&t=${t.toFixed(1)}`,
-      text:`×はどこだ 今日の1本 #${MODE.day}\n${grid} ${fmt(t)}${st>1?`\n🔥${st}日連続`:''}\n#×はどこだ`}}
+    return {grid,title:`今日の1本 #${MODE.day}${MODE.hard?' 上級の日':''}`,url:`${baseUrl()}?d=${MODE.day}&t=${t.toFixed(1)}`,
+      text:`×はどこだ 今日の1本 #${MODE.day}${MODE.hard?' 上級の日':''}\n${grid} ${fmt(t)}${st>1?`\n🔥${st}日連続`:''}\n#×はどこだ`}}
   const idx=ARTICLES.indexOf(A), hd=MODE.hard?' 上級':'', md=medal(t,A,MODE.hard), nm=A.long?'ロング':`記事${idx+1}${hd}`;
   return {grid,title:`${nm}「${A.site}」`,url:`${baseUrl()}?a=${A.id}&t=${t.toFixed(1)}&s=${MODE.seed}${MODE.hard?'&h=1':''}`,
     text:`×はどこだ ${nm}「${A.site}」\n${grid} ${fmt(t)} ${md}\n#×はどこだ`};
@@ -584,7 +587,7 @@ function start(a,mode={kind:'article'}){
   ORDER=pickOrder(cfg());$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const label=mode.kind==='daily'?`今日の1本 #${mode.day}`:a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
+  const label=mode.kind==='daily'?`今日の1本 #${mode.day}${mode.hard?' 上級の日':''}`:a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
   const b=mode.kind==='daily'?dBest(mode.day):mode.hard?bestH(a.id):best(a.id);
   const box=el(`<div class="card"><h3>${label}</h3><p><b>${a.site}</b></p>${mode.rival?`<div class="letter">挑戦状：相手のタイムは <b>${fmt(mode.rival)}</b></div>`:''}<p>最後まで読めばゴール。広告は${cfg().ads}枚。${mode.hard?'<br><b style="color:var(--hot)">上級：難しい広告だけが出る。ヒントは使えない。</b>':''}<br>本物の×だけを押そう。</p>${mode.kind==='daily'?'<p class="total">今日はだれが遊んでも同じ広告の並び</p>':''}
    <button class="big" id="go" type="button">スタート</button><p class="total">${b?'ベスト '+fmt(b)+' '+medal(b,a,mode.hard):'タイムアタック'}　金は ${fmt(goldOf(a,mode.hard))} 以内</p></div>`);
@@ -598,7 +601,7 @@ function menu(){
   const all=ARTICLES.every(a=>cleared(a.id)), long3=ARTICLES.slice(0,3).every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
    <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
-   <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}<small>みんな同じ広告の並び${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
+   <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}${hardDay(d)?' <span class="streak">上級の日</span>':''}<small>${hardDay(d)?'日曜は難しい広告だけ・ヒントなし':'みんな同じ広告の並び'}${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
    <p class="sec">記事を順に読む</p>
    <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
    <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
@@ -611,7 +614,7 @@ function menu(){
    ${fbLink('fbMenu')}
    <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
   stage.appendChild(box);
-  box.querySelector('#dailyBtn').onclick=()=>start(dailyArt(d),{kind:'daily',day:d});
+  box.querySelector('#dailyBtn').onclick=()=>start(dailyArt(d),dailyMode(d));
   box.querySelectorAll('.lv[data-i]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
   box.querySelectorAll('.lv[data-h]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.h],{kind:'article',hard:true})});
   box.querySelector('#longBtn').onclick=e=>{if(!e.currentTarget.disabled)start(LONG)};
@@ -654,7 +657,7 @@ function fromLink(){
   const t=Number(q.get('t')), rival=t>0&&t<10000?Math.round(t*10)/10:0;
   const d=Number(q.get('d')), a=byId(q.get('a')), seed=Number(q.get('s'));
   try{if(q.has('d')||q.has('a'))history.replaceState(null,'',location.pathname)}catch(e){}
-  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),{kind:'daily',day:d,rival});return true}
+  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),dailyMode(d,rival));return true}
   if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0,hard:q.get('h')==='1'&&!a.long});return true}
   return false;
 }

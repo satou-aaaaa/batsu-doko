@@ -540,6 +540,22 @@ if (browser) try {
     await p.close();
   }
 
+  // 5i. 日曜（#6・#13…）の今日の1本は「上級の日」
+  {
+    const p = await open();
+    const hd = await p.evaluate(() => { const out = []; for (const d of [5, 6, 7, 13, 20]) { window.__XDOKO_DAY = d; menu(); document.querySelector("#dailyBtn").click();
+      out.push({ d, hard: !!MODE.hard, card: document.querySelector("#stage .card").textContent.includes("上級の日"), lv2: ORDER.every((t) => TYPES[t].lv >= 2) }); }
+      delete window.__XDOKO_DAY; menu(); return out; });
+    const want = { 5: false, 6: true, 7: false, 13: true, 20: true };
+    check("今日の1本は日曜（#6・#13・#20）だけ上級の日になり、難しい広告だけが出る", hd.every((x) => x.hard === want[x.d] && x.card === want[x.d] && (!want[x.d] || x.lv2)), JSON.stringify(hd));
+    const sameH = await p.evaluate(() => { const o = []; for (let k = 0; k < 20; k++) { start(dailyArt(6), dailyMode(6)); o.push(ORDER.join()); } menu(); return new Set(o).size; });
+    check("上級の日も、同じ日ならだれでも同じ並び", sameH === 1, sameH);
+    await p.addInitScript(() => { window.__XDOKO_DAY = 10; });
+    await p.goto(url + "?d=6&t=50"); await p.waitForTimeout(200);
+    check("上級の日の挑戦状のリンクを開くと、上級の日で始まる", (await p.textContent("#stage .card")).includes("今日の1本 #6 上級の日"));
+    await p.close();
+  }
+
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
