@@ -62,7 +62,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .appbar .open{margin-left:auto;background:var(--site);color:#fff;border:0;border-radius:999px;padding:6px 14px;font-weight:800;cursor:pointer}
 .appbar .shut{border:0;background:transparent;font-size:16px;color:var(--muted);cursor:pointer;padding:4px}
 
-#stage{position:fixed;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(20,24,35,.38);touch-action:none;
+#stage{position:fixed;inset:0;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:12px;background:rgba(20,24,35,.38);overflow-y:auto;overscroll-behavior:contain;padding-block:40px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #stage.full{background:#11131a}
 #stage.full::before{content:"広告";position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));color:#9aa3b5;font-size:12px}
@@ -73,6 +73,7 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .ad .tag{position:absolute;left:6px;top:4px;font-size:10px;opacity:.65}
 .big{display:inline-block;margin-top:10px;background:var(--hot);color:#fff;border:0;border-radius:999px;padding:12px 22px;font:800 16px var(--body);cursor:pointer}
 .x{position:absolute;border:0;background:transparent;color:var(--adink);font:800 18px var(--body);cursor:pointer;line-height:1;padding:6px}
+.drag{touch-action:none}
 .scroll{max-height:150px;overflow-y:auto;text-align:left;font-size:12px;font-weight:400;border:1px dashed var(--adink);padding:8px;background:#fffbd8;touch-action:pan-y}
 .pict{position:relative;font-size:64px;line-height:1.2;margin:6px 0;user-select:none}
 .sys{box-sizing:border-box;width:min(100%,330px);background:#fff;color:#202124;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);padding:18px;text-align:left;font-size:14px;animation:pop .2s ease-out}
@@ -226,11 +227,13 @@ const TYPES={
   html:p=>`<div class="sys"><b>このサイトが通知の送信を求めています</b><p style="margin:8px 0 0;color:#5f6368;font-size:13px">「許可」を押すと、最新のお得情報をお届けします</p>
    <div class="row"><button class="real" aria-label="閉じる">ブロック</button><button class="prim fake">許可</button></div></div>`},
  swipe:{lv:3,hint:'×は無い。上か横にスワイプして閉じる。',
-  html:p=>`<div class="ad drag" style="cursor:grab"><span class="tag">広告</span>${head(p)}<button class="big fake">${p[3]}</button><p style="font-size:11px;font-weight:400;margin-top:10px">↑ スワイプして記事に戻る</p></div>`,
+  html:p=>`<div class="ad drag" style="cursor:grab" tabindex="0" aria-label="広告。上か横にスワイプ（キーボードは矢印キー）で閉じる"><span class="tag">広告</span>${head(p)}<button class="big fake">${p[3]}</button><p style="font-size:11px;font-weight:400;margin-top:10px">↑ スワイプして記事に戻る</p></div>`,
   wire(ad){let sx,sy,on=false;ad.addEventListener('pointerdown',e=>{if(e.target.closest('.big'))return;on=true;sx=e.clientX;sy=e.clientY;try{ad.setPointerCapture(e.pointerId)}catch(_){}ad.style.animation='none'});
    ad.addEventListener('pointermove',e=>{if(!on)return;ad.style.transform=`translate(${e.clientX-sx}px,${e.clientY-sy}px)`});
    const up=e=>{if(!on)return;on=false;const d=Math.hypot(e.clientX-sx,e.clientY-sy);ad.style.transition='transform .2s';if(d>Math.min(window.innerWidth,400)*0.35){ad.style.transform+=' scale(.2)';setTimeout(win,200)}else{ad.style.transform='';setTimeout(()=>ad.style.transition='',220)}};
-   ad.addEventListener('pointerup',up);ad.addEventListener('pointercancel',up)}},
+   ad.addEventListener('pointerup',up);ad.addEventListener('pointercancel',up);
+   // キーボードだけで遊ぶ人のために、矢印キーでもスワイプと同じく閉じる
+   ad.addEventListener('keydown',e=>{if(['ArrowUp','ArrowLeft','ArrowRight'].includes(e.key)&&e.target===ad){e.preventDefault();win()}});ad.focus({preventScroll:true})}},
  chain:{lv:3,hint:'閉じたあと、下からもう1枚出てくる。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big fake first">${p[3]}</button>
    <div class="cf" hidden style="border-top:2px dashed var(--adink);margin-top:10px;padding-top:8px"><p>こちらもおすすめ</p><p style="font-size:13px">${rnd(PRODUCTS)[0]}</p><button class="big fake">見てみる</button><br><button class="x real" style="position:static;font-size:16px" aria-label="閉じる">× 閉じる</button></div></div>`,

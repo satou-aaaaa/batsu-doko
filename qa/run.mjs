@@ -14,7 +14,11 @@ const W = 390, H = 780;
 const results = [];
 const check = (name, ok, detail = "") => { results.push({ name, ok: !!ok, detail: String(detail) }); console.log(ok ? "✓" : "✗", name, ok ? "" : detail); };
 
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+// ブラウザ：CHROMIUM_PATH、無ければクラウドの決まった場所、無ければ Playwright の既定
+const exe = process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : "");
+let browser = null;
+try { browser = await chromium.launch(exe ? { executablePath: exe } : {}); }
+catch (e) { check("Chromium を起動できる（bash scripts/setup.sh を見る）", false, e.message); }
 const errors = [];
 async function open({ unlock = true } = {}) {
   const p = await browser.newPage({ viewport: { width: W, height: H } });
@@ -55,7 +59,7 @@ async function play(p, i) {
   return seen;
 }
 
-try {
+if (browser) try {
   // 1. 形：記事3本・広告の種類・中身が架空であること
   {
     const p = await open();
@@ -111,7 +115,7 @@ try {
       try { const seen = await play(p, i); seen.forEach((s) => used.add(s)); okRuns++; } catch (e) { detail = e.message; }
       await p.close();
     }
-    check(`記事${i + 1} を ${RUNS} 回とも最後まで読めた`, okRuns === RUNS, detail);
+    check(`記事${i + 1} を ${RUNS} 回とも最後まで読めた`, RUNS > 0 && okRuns === RUNS, detail || (RUNS > 0 ? "" : "回数が0"));
   }
   {
     // 出なかった種類は1枚ずつ開いて閉じられるか確かめる（全種類を毎回見る）
@@ -122,6 +126,20 @@ try {
       try { await solve(p); if (await adOpen(p)) fails.push(t); } catch (e) { fails.push(t + ":" + e.message); }
     }
     check("広告の全16種類を、正しい手順で閉じられる", fails.length === 0, fails.join(","));
+    await p.close();
+  }
+
+  {
+    const p = await open(); await startArt(p, 2);
+    await p.evaluate(() => { ORDER[n] = "swipe"; openAd(); }); await p.keyboard.press("ArrowUp"); await p.waitForTimeout(100);
+    check("スワイプで閉じる広告は、キーボード（矢印キー）でも閉じられる", !(await adOpen(p)));
+    await p.setViewportSize({ width: 640, height: 300 });
+    let reach = true; for (const t of ["corner", "outside", "three", "picx", "countdown"]) {
+      await p.evaluate((t) => { ORDER[n] = t; openAd(); }, t); if (t === "countdown") await p.waitForSelector("#stage .real:not([hidden])", { timeout: 9000 });
+      await p.locator("#stage .real:not([hidden])").first().scrollIntoViewIfNeeded(); const b = await p.locator("#stage .real:not([hidden])").first().boundingBox();
+      if (!b || b.y < 0 || b.y + b.height > 300) reach = false; await solve(p).catch(() => { reach = false; });
+    }
+    check("背の低い画面（横向きのスマホ）でも、上のほうの×に届く", reach);
     await p.close();
   }
 
@@ -150,8 +168,17 @@ try {
     const before = await p.evaluate(() => pen); await p.click("#hintBtn"); const after = await p.evaluate(() => pen);
     check("ヒントを見ると5秒足される", after - before === 5 && (await p.isVisible("#hintTxt")));
     await p.evaluate(() => menu());
-    await play(p, 0); await p.click("#toMenu");
+    await play(p, 0);
+    const share = await p.textContent("#shareTxt"), shown = await p.textContent("#clock");
+    check("結果の文に記事名・広告の枚数・タイムが入る", share.includes("記事1") && share.includes("広告4枚") && share.includes(shown) && share.includes("#×はどこだ"), share);
+    await p.context().grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => {});
+    await p.click("#copyBtn"); await p.waitForTimeout(200);
+    const copied = await p.evaluate(() => navigator.clipboard.readText().catch(() => getSelection().toString()));
+    check("「結果をコピー」で結果の文がそのままコピーされる（だめなら選ばれる）", copied.trim() === share.trim(), copied);
+    await p.click("#toMenu");
     check("記事1を読み切ると記事2が開き、ベストが残る", !(await p.isDisabled('.lv[data-i="1"]')) && /秒/.test(await p.textContent('.lv[data-i="0"] .bt')));
+    const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); menu(); return document.querySelector("#stage .card").textContent; });
+    check("3本読み切ると合計ベストが出る（12.3+20.0+30.4=62.7秒）", total.includes("合計ベスト 62.7秒"), total);
     await p.close();
   }
 
@@ -192,6 +219,7 @@ try {
 } catch (e) {
   check("検査が最後まで動く", false, e.stack || e.message);
 } finally { await browser.close(); }
+if (!results.length) check("検査が1つも動いた", false);
 
 const ng = results.filter((r) => !r.ok);
 const md = [`# ×はどこだ 検査の結果`, ``, ng.length ? `**${ng.length} 件の失敗**` : `すべて合格（${results.length} 件）`, ``,
