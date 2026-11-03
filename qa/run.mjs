@@ -72,9 +72,9 @@ if (browser) try {
   {
     const p = await open();
     const d = await p.evaluate(() => ({ arts: ARTICLES.map((a) => ({ id: a.id, ads: a.ads, lv: a.lv, v: a.vignette })), types: Object.entries(TYPES).map(([k, t]) => ({ k, lv: t.lv, hint: !!t.hint })) }));
-    check("記事が3本（レシピ→旅行→ニュース）", d.arts.map((a) => a.id).join() === "recipe,travel,news");
+    check("記事が4本（レシピ→旅行→ニュース→家電レビュー）", d.arts.map((a) => a.id).join() === "recipe,travel,news,review");
     check("先の記事ほど広告が多い", d.arts.every((a, i) => i === 0 || a.ads > d.arts[i - 1].ads), d.arts.map((a) => a.ads));
-    check("広告の種類が16あり、どれにもヒントがある", d.types.length === 16 && d.types.every((t) => t.hint), d.types.length);
+    check("広告の種類が19あり、どれにもヒントがある", d.types.length === 19 && d.types.every((t) => t.hint), d.types.length);
     for (const lv of [1, 2, 3]) {
       const pool = d.types.filter((t) => t.lv <= lv).length, need = d.arts.find((a) => a.lv === lv).ads;
       check(`難しさ${lv}の記事は、選べる種類（${pool}）が広告の数（${need}）以上`, pool >= need);
@@ -99,7 +99,7 @@ if (browser) try {
     check("広告の組み合わせを記事ごとに500回作って、どれも正しい", bad.length === 0, bad.join(" / "));
     // 関所の位置（記事を作り直すたびに、広告の間が1画面の0.75以上あく）
     const gaps = [];
-    for (let i = 0; i < 3; i++) for (let r = 0; r < 20; r++) {
+    for (let i = 0; i < 4; i++) for (let r = 0; r < 20; r++) {
       const g = await p.evaluate((i) => { A = ARTICLES[i]; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
         const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top);
         const ids = [...document.querySelectorAll(".gate")].map((x) => +x.dataset.i);
@@ -116,7 +116,7 @@ if (browser) try {
 
   // 3. 通しで遊ぶ（毎回ちがう組み合わせ）
   const used = new Set();
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     let okRuns = 0, detail = "";
     for (let r = 0; r < RUNS; r++) {
       const p = await open();
@@ -133,7 +133,15 @@ if (browser) try {
       await p.evaluate((t) => { ORDER[n] = t; openAd(); }, t);
       try { await solve(p); if (await adOpen(p)) fails.push(t); } catch (e) { fails.push(t + ":" + e.message); }
     }
-    check("広告の全16種類を、正しい手順で閉じられる", fails.length === 0, fails.join(","));
+    check("広告の全19種類を、正しい手順で閉じられる", fails.length === 0, fails.join(","));
+    // 新しく足した広告は、わなを押すと感染する
+    const traps = { faint: "#stage .big", cookie: "#stage .prim", survey: "#stage .x.fake" }, trapNg = [];
+    for (const [t, sel] of Object.entries(traps)) {
+      await p.evaluate((t) => { start(ARTICLES[2]); document.querySelector("#go").click(); ORDER[n] = t; openAd(); }, t);
+      await p.click(sel); await p.waitForTimeout(80);
+      if (!(await p.isVisible("#virus"))) trapNg.push(t);
+    }
+    check("うすい「閉じる」・クッキーの同意・アンケートは、わな（大きなボタン・すべて同意・右上の×）を押すと感染する", trapNg.length === 0, trapNg.join(","));
     await p.close();
   }
 
@@ -195,8 +203,8 @@ if (browser) try {
     check("記事の見出しは文節の切れ目で折り返す（word-break: auto-phrase）", wb === "auto-phrase", wb);
     await p.click("#toMenu");
     check("記事1を読み切ると記事2が開き、ベストが残る", !(await p.isDisabled('.lv[data-i="1"]')) && /秒/.test(await p.textContent('.lv[data-i="0"] .bt')));
-    const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); menu(); return document.querySelector("#stage .card").textContent; });
-    check("3本読み切ると合計ベストが出る（12.3+20.0+30.4=62.7秒）", total.includes("合計ベスト 62.7秒"), total);
+    const total = await p.evaluate(() => { localStorage.setItem("xdoko-best-recipe", "12.3"); localStorage.setItem("xdoko-best-travel", "20.0"); localStorage.setItem("xdoko-best-news", "30.4"); localStorage.setItem("xdoko-best-review", "40.0"); menu(); return document.querySelector("#stage .card").textContent; });
+    check("4本読み切ると合計ベストが出る（12.3+20.0+30.4+40.0=102.7秒）", total.includes("4本の合計ベスト 102.7秒"), total);
     await p.close();
   }
 
@@ -211,13 +219,13 @@ if (browser) try {
       let bad = [];
       for (let d = 1; d <= 300; d++) { const A = dailyArt(d); start(A, { kind: "daily", day: d }); const top = Math.max(...ORDER.map((t) => TYPES[t].lv));
         if (ORDER.length !== A.ads || new Set(ORDER).size !== ORDER.length || top !== A.lv || ORDER.some((t) => TYPES[t].lv > A.lv)) bad.push(d); }
-      const rot = [1, 2, 3, 4].map((d) => dailyArt(d).id).join();
+      const rot = [1, 2, 3, 4, 5].map((d) => dailyArt(d).id).join();
       menu(); return { same, diff, bad, rot };
     });
     check("今日の1本は、同じ日なら100回作っても同じ広告の並び・置き場所", det.same);
     check("今日の1本は、日がちがえば並びが変わる（30日で25通り以上）", det.diff >= 25, det.diff);
     check("今日の1本を300日ぶん作っても、どの日も枚数・重なりなし・難しさが正しい", det.bad.length === 0, det.bad.slice(0, 5));
-    check("今日の1本の記事は日ごとに 1→2→3→1 と回る", det.rot === "recipe,travel,news,recipe", det.rot);
+    check("今日の1本の記事は日ごとに 1→2→3→4→1 と回る", det.rot === "recipe,travel,news,review,recipe", det.rot);
     // 連続記録：前の日に読み切っていれば +1、1日あくと 1 から
     const sk = await p.evaluate(() => {
       const fin = (d) => { window.__XDOKO_DAY = d; start(dailyArt(d), { kind: "daily", day: d }); running = true; t0 = performance.now() - 3000; finish(); return JSON.parse(localStorage.getItem("xdoko-streak")); };
@@ -328,13 +336,13 @@ if (browser) try {
       for (const a of ARTICLES) { const h = hardOf(a); MODE = { kind: "article", hard: true }; A = a;
         for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(h); if (o.length !== a.ads || new Set(o).size !== o.length || o.some((t) => TYPES[t].lv < 2) || o.filter((t) => TYPES[t].lv === 3).length < 2) { bad.push(a.id + ":" + o.join()); break; } } }
       MODE = { kind: "article" };
-      return { names: names.length === 16 && new Set(names).size === 16 && names.every(Boolean), bad, gold: ARTICLES.every((a) => a.gold > 0 && a.goldH > a.gold) };
+      return { names: names.length === 19 && new Set(names).size === 19 && names.every(Boolean), bad, gold: ARTICLES.every((a) => a.gold > 0 && a.goldH > a.gold) };
     });
-    check("広告の16種類それぞれに、図鑑に出す名前がある（重ならない）", shape.names);
+    check("広告の19種類それぞれに、図鑑に出す名前がある（重ならない）", shape.names);
     check("上級の広告の組み合わせを記事ごとに500回作って、どれも同じ枚数・重なりなし・★2以上だけ・★3が2枚以上", shape.bad.length === 0, shape.bad.join(" / "));
     check("どの記事にも金メダルの目安タイムがあり、上級のほうが長い", shape.gold);
     const gapsH = [];
-    for (let i = 0; i < 3; i++) for (let r = 0; r < 20; r++) gapsH.push(await p.evaluate((i) => { A = ARTICLES[i]; MODE = { kind: "article", hard: true }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
+    for (let i = 0; i < 4; i++) for (let r = 0; r < 20; r++) gapsH.push(await p.evaluate((i) => { A = ARTICLES[i]; MODE = { kind: "article", hard: true }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
       const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((x) => x.getBoundingClientRect().top - top); if (p2) p2.hidden = true; MODE = { kind: "article" };
       return { i, min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length, want: hardOf(A).ads - (A.vignette ? 1 : 0) }; }, i));
     const tightH = gapsH.filter((g) => g.min < H * 0.75 || g.n !== g.want);
@@ -381,10 +389,10 @@ if (browser) try {
     const dx = await p.evaluate(() => { const d = JSON.parse(localStorage.getItem("xdoko-dex") || "{}"), st = JSON.parse(localStorage.getItem("xdoko-stats") || "{}"); menu(); return { types: Object.keys(d).length, clean: Object.values(d).every((e) => e.clean && e.n >= 1), st, btn: document.querySelector("#dexBtn").textContent }; });
     check("閉じた広告が図鑑に入り（7種類）、ヒントなしの印が付く", dx.types === 7 && dx.clean, JSON.stringify(dx));
     check("記録：読み切った回数と閉じた広告の枚数が増える", dx.st.clear === 1 && dx.st.closed === 7, JSON.stringify(dx.st));
-    check("メニューの図鑑のボタンに、見つけた数（7/16）が出る", dx.btn.includes("7/16"), dx.btn);
+    check("メニューの図鑑のボタンに、見つけた数（7/19）が出る", dx.btn.includes("7/19"), dx.btn);
     await p.click("#dexBtn");
     const dt = await p.evaluate(() => { const known = Object.keys(JSON.parse(localStorage.getItem("xdoko-dex"))); return { txt: document.querySelector("#stage .card").textContent, names: known.map((k) => TYPES[k].name), unknown: [...document.querySelectorAll(".dex .no")].length }; });
-    check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 9 && dt.txt.includes("広告図鑑 7/16"), dt.unknown);
+    check("図鑑の画面に、見つけた広告の名前と閉じ方が出て、まだの広告は「？？？」", dt.names.every((n) => dt.txt.includes(n)) && dt.unknown === 12 && dt.txt.includes("広告図鑑 7/19"), dt.unknown);
     check("図鑑の画面に記録（読み切った・閉じた広告・感染・連続・メダル）が出る", ["読み切った1回", "閉じた広告7枚", "感染した0回", "連続の最高", "メダル"].every((w) => dt.txt.includes(w)), dt.txt.slice(-80));
     await p.click("#dexBack");
     check("図鑑からメニューへ戻れる", !!(await p.$("#dailyBtn")));
@@ -478,7 +486,7 @@ if (browser) try {
   // 5g. ロング：3本つなぎ・広告12枚・先ほど難しい。3本とも読み切ると開く
   {
     const p = await open({ unlock: false });
-    check("ロングは、3本とも読み切るまで開かない", await p.isDisabled("#longBtn"));
+    check("ロングは、記事1〜3を読み切るまで開かない", await p.isDisabled("#longBtn"));
     await p.evaluate(() => { ARTICLES.forEach((a) => localStorage.setItem("xdoko-best-" + a.id, "99.0")); menu(); });
     check("3本とも読み切るとロングが開く", !(await p.isDisabled("#longBtn")));
     const lo = await p.evaluate(() => { const bad = []; for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(LONG); const lv = o.map((t) => TYPES[t].lv).join("");
@@ -513,7 +521,7 @@ if (browser) try {
   // 6. スマホ幅で横にはみ出さない・音を切れる
   {
     const p = await open(); let sw = await p.evaluate(() => document.documentElement.scrollWidth);
-    for (const i of [0, 1, 2]) { await startArt(p, i); sw = Math.max(sw, await p.evaluate(() => document.documentElement.scrollWidth)); await p.evaluate(() => menu()); }
+    for (const i of [0, 1, 2, 3]) { await startArt(p, i); sw = Math.max(sw, await p.evaluate(() => document.documentElement.scrollWidth)); await p.evaluate(() => menu()); }
     check("スマホ幅（390px）で横にはみ出さない", sw <= W, sw);
     await p.click("#menuSound"); check("記事を選ぶ画面の音ボタンで切り替わり、覚えている", (await p.evaluate(() => localStorage.getItem("xdoko-sound"))) === "off");
     await p.close();

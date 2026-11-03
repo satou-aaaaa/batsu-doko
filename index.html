@@ -302,9 +302,17 @@ const TYPES={
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x nest" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big fake first">${p[3]}</button>
    <div class="cf" hidden style="border-top:2px dashed var(--adink);margin-top:10px;padding-top:8px"><p>こちらもおすすめ</p><p style="font-size:13px">${rnd(PRODUCTS)[0]}</p><button class="big fake">見てみる</button><br><button class="x real" style="position:static;font-size:16px" aria-label="閉じる">× 閉じる</button></div></div>`,
   wire(ad){const x=ad.querySelector('.nest');x.onclick=()=>{SND.close();ad.querySelector('.cf').hidden=false;ad.querySelector('.first').hidden=true;x.hidden=true;ad.querySelector('h3').hidden=true}}},
+ faint:{name:'うすい「閉じる」',lv:1,hint:'左下の、うすい灰色の「閉じる」。',
+  html:p=>`<div class="ad"><span class="tag">広告</span>${head(p)}<button class="big">${p[3]}</button><button class="x real" style="left:6px;bottom:2px;font-size:11px;color:#b9ad6a" aria-label="閉じる">閉じる</button></div>`},
+ cookie:{name:'クッキーの同意',lv:2,hint:'大きな「すべて同意」ではなく、小さな「必要なものだけ」。',
+  html:p=>`<div class="sys"><b>クッキーの使用について</b><p style="margin:8px 0 0;color:#5f6368;font-size:13px;line-height:1.6">このサイトでは、広告の表示とアクセスの分析のためにクッキーを使います。「すべて同意」を押すと、提携先の広告にも使われます。</p>
+   <div class="row" style="flex-direction:column;align-items:stretch"><button class="prim fake">すべて同意して続ける</button><button class="real" style="border:0;font-size:12px;color:#5f6368" aria-label="閉じる">必要なものだけ</button></div></div>`},
+ survey:{name:'アンケートのお願い',lv:2,hint:'右上の×は「回答する」と同じ。下の「今回は答えない」を押す。',
+  html:p=>`<div class="sys" style="position:relative"><button class="x fake" style="right:8px;top:6px;color:#5f6368">×</button><b>1分アンケートにご協力ください</b><p style="margin:8px 0 0;color:#5f6368;font-size:13px">答えた方の中から抽選で、500円分のギフト券が当たります。</p>
+   <div class="row"><button class="real" style="border:0;font-size:12px;color:#5f6368" aria-label="閉じる">今回は答えない</button><button class="prim fake">回答する</button></div></div>`},
 };
 
-/* ---------- 記事（3本）。すべて架空のサイト ---------- */
+/* ---------- 記事（4本）。すべて架空のサイト ---------- */
 const ARTICLES=[
  {id:'recipe',site:'まいにちごはん帖',color:'#d0661f',ph:'linear-gradient(135deg,#ffe2b8,#ffd0d8)',crumb:'ホーム › 献立',title:'冷蔵庫の残りで作る 1週間の晩ごはん',meta:'2026年11月3日 更新',
   ads:4,lv:1,vignette:false,anchor:true,gold:20,goldH:30,
@@ -345,11 +353,28 @@ const ARTICLES=[
    ['開館記念の催し','🎉','開館日には、作家の講演会やおはなし会を開く予定。|くわしい日程は、来年2月ごろに市の広報で知らせる。'],
    ['利用カードの切り替え','🪪','今の図書館のカードは、そのまま新しい図書館でも使える。|切り替えの手続きはいらない。'],
    ['問い合わせ','☎️','くわしくは、みなと市教育委員会の図書館準備室まで。|（この記事は架空のニュースです）']]},
+ {id:'review',site:'くらしの家電ノート',color:'#0f7c8c',ph:'linear-gradient(135deg,#c9f0ee,#e2ecff)',crumb:'ホーム › 家電 › 寝具まわり',title:'ふとん乾燥機を3台、1か月使い比べてみた',meta:'2026年11月1日 公開',
+  ads:8,lv:3,vignette:true,anchor:true,appbar:true,gold:62,goldH:80,
+  secs:[['','冬になると、ふとんの冷たさがつらい。そこで、値段のちがうふとん乾燥機を3台買って、1か月使い比べました。|比べたのは、温まる速さ・音・片づけやすさ・電気代の4つです。'],
+   ['比べた3台','🛏️','3台とも型番は伏せて A・B・C と書きます。A は1万円台の小型、B は2万円台のマット付き、C は3万円台の多機能タイプです。|どれもホースをふとんの間に入れるだけで使えます。'],
+   ['温まる速さ','🌡️','30分運転したあと、ふとんの中の温度を測りました。A は34度、B は37度、C は38度でした。|寝る前の20分だけ使うなら、A でも十分あたたかく感じました。'],
+   ['音の大きさ','🔊','いちばん静かだったのは C で、隣の部屋ではほとんど聞こえません。|A はドライヤーの弱くらいの音がします。夜おそくに使うなら気になるかもしれません。'],
+   ['片づけやすさ','📦','A は本体が小さく、棚のすき間にしまえます。|B はマットを広げてたたむ手間があり、毎日だと少し面倒でした。'],
+   ['使う前に','📏','ふとんの大きさとホースの長さを、先に確かめておくと失敗しません。|シングルなら、どれでも端まで温まりました。'],
+   ['寒い朝にも','🌄','起きる30分前に予約で動かせるのは C だけでした。|冬の朝、着替えを入れておくと、あたたかい服を着られます。'],
+   ['置き場所','🏠','出しっぱなしにするなら、ベッドの横に置ける細長い C が便利でした。|A と B は、使うたびに押し入れから出しました。'],
+   ['ダニ対策の運転','🧺','B と C には、高い温度で長く運転するダニ対策のモードがあります。|使ったあとは、掃除機でふとんの表面を吸うのが大事です。'],
+   ['くつ乾燥にも使える','👟','C には、くつを乾かすための先が付いています。|雨の日のスニーカーが、1時間ほどで乾きました。'],
+   ['電気代','💡','30分の運転で、どれも10円前後でした（1kWh を31円で計算）。|ダニ対策のモードは2時間ほどかかるので、40円くらいになります。'],
+   ['こまったこと','😓','A はホースが短く、ダブルのふとんだと端まで温まりにくいです。|C はボタンが多く、慣れるまで説明書を見ながら使いました。'],
+   ['手入れ','🧽','どれも吸い込み口のフィルターを、月に1回ほこりを取るだけです。|C はフィルターが外しやすく、水洗いもできました。'],
+   ['毎日使うなら','📅','毎日寝る前に使うなら、出し入れが楽な A がいちばん続きました。|ふとんを干せない家なら、ダニ対策のある B か C が安心です。'],
+   ['まとめ','','高いものほど性能は上でしたが、毎日使うかどうかで選ぶのがいちばんだと感じました。|（この記事は架空のレビューです。商品も架空です）']]},
 ];
 // ロング：3本の記事をつないだ「まとめ」の長いページ。広告12枚で、先へ進むほど難しい（★1→★2→★3を4枚ずつ）。並びは遊ぶたびに変わる。3本とも読み切ると開く
 const LONG={id:'long',site:'よみもの広場',color:'#7a4fd0',ph:'linear-gradient(135deg,#e6dcff,#ffe0ec)',crumb:'ホーム › まとめ',title:'今週よく読まれた記事 3本まとめ読み',meta:'2026年11月3日 更新',
   ads:12,lv:3,vignette:false,anchor:true,appbar:true,gold:110,goldH:140,long:true,
-  get secs(){return ARTICLES.flatMap(a=>a.secs.map((x,i)=>i===0?[`【${a.site}】${a.title}`,'',x.length===3?x[2]:x[1]]:x))}};
+  get secs(){return ARTICLES.slice(0,3).flatMap(a=>a.secs.map((x,i)=>i===0?[`【${a.site}】${a.title}`,'',x.length===3?x[2]:x[1]]:x))}};
 const byId=id=>id==='long'?LONG:ARTICLES.find(x=>x.id===id);
 
 /* ---------- 遊びの進み ---------- */
@@ -549,7 +574,7 @@ function start(a,mode={kind:'article'}){
 function menu(){
   stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
   stage.className='menu';stage.hidden=false;stage.innerHTML='';
-  const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
+  const all=ARTICLES.every(a=>cleared(a.id)), long3=ARTICLES.slice(0,3).every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
    <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
    <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}<small>みんな同じ広告の並び${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
@@ -557,9 +582,9 @@ function menu(){
    <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
    <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
    ${ARTICLES.some(a=>cleared(a.id))?'':'<p class="total" id="hardNote">ふつうで読み切った記事から、上級が開きます</p>'}<div class="levels"${ARTICLES.some(a=>cleared(a.id))?'':' hidden'}>${ARTICLES.map((a,i)=>{const lock=!cleared(a.id);return `<button class="lv hard" type="button" data-h="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'ふつうで読み切ると開く':'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`}).join('')}</div>
-   <p class="total">${all?'3本の合計ベスト '+fmt(sum):'3本読み切ると合計タイムが出ます'}</p>
+   <p class="total">${all?ARTICLES.length+'本の合計ベスト '+fmt(sum):ARTICLES.length+'本読み切ると合計タイムが出ます'}</p>
    <p class="sec">ロング（3本つなぎ・広告12枚・先ほど難しい）</p>
-   <div class="levels"><button class="lv long" type="button" id="longBtn"${all?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${all?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'3本とも読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
+   <div class="levels"><button class="lv long" type="button" id="longBtn"${long3?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${long3?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'記事1〜3を読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
    <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・記録</button>
    <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button>
    ${fbLink('fbMenu')}
