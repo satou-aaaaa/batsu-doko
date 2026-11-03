@@ -20,9 +20,13 @@ let browser = null;
 try { browser = await chromium.launch(exe ? { executablePath: exe } : {}); }
 catch (e) { check("Chromium を起動できる（bash scripts/setup.sh を見る）", false, e.message); }
 const errors = [];
+// 外へ出た通信（file:// とデータの読み込みは除く）。記事を遊ぶあいだも全部記録する
+const ALLOW = ["127.0.0.1", "fonts.googleapis.com", "fonts.gstatic.com"];
+const outsideAll = [];
+const watchNet = (p) => p.on("request", (r) => { const u = new URL(r.url()); if (!["file:", "data:", "blob:"].includes(u.protocol) && !ALLOW.includes(u.hostname)) outsideAll.push(r.url()); });
 async function open({ unlock = true } = {}) {
   const p = await browser.newPage({ viewport: { width: W, height: H } });
-  p.on("pageerror", (e) => errors.push(e.message));
+  p.on("pageerror", (e) => errors.push(e.message)); watchNet(p);
   await p.goto(url);
   if (unlock) await p.evaluate(() => { ARTICLES.forEach((a) => localStorage.setItem("xdoko-best-" + a.id, "99.0")); menu(); });
   return p;
@@ -193,7 +197,9 @@ if (browser) try {
 
   // 7. 外へ通信しない（Google Fonts の文字だけ）・PWA で電波が無くても開ける
   {
+    let fail5xx = false, served5xx = 0;
     const server = http.createServer((req, res) => {
+      if (fail5xx) { served5xx++; res.writeHead(503); return res.end(); }
       const f = path.join(root, decodeURIComponent(req.url.split("?")[0]).replace(/\/$/, "/index.html"));
       if (!f.startsWith(root) || !existsSync(f)) { res.writeHead(404); return res.end(); }
       const type = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".webmanifest": "application/manifest+json" }[path.extname(f)] || "application/octet-stream";
@@ -203,10 +209,12 @@ if (browser) try {
     const base = `http://127.0.0.1:${server.address().port}/`;
     const ctx = await browser.newContext({ viewport: { width: W, height: H } });
     try {
-      const p = await ctx.newPage(); const outside = [];
-      p.on("request", (r) => { const h = new URL(r.url()).hostname; if (!["127.0.0.1", "fonts.googleapis.com", "fonts.gstatic.com"].includes(h)) outside.push(r.url()); });
+      const p = await ctx.newPage(); watchNet(p);
       await p.goto(base); await p.evaluate(() => navigator.serviceWorker.ready); await p.reload(); await p.waitForTimeout(500);
-      check("外へ通信しない（文字の Google Fonts だけ）", outside.length === 0, outside.slice(0, 3).join(" "));
+      check("外へ通信しない（遊んでいるあいだも、文字の Google Fonts だけ）", outsideAll.length === 0, outsideAll.slice(0, 3).join(" "));
+      fail5xx = true; await p.reload(); await p.waitForTimeout(300);
+      check("サーバーが 5xx を返しても保存した画面が出る（PWA）", served5xx > 0 && await p.isVisible(".lv"), "503 を返した回数 " + served5xx);
+      fail5xx = false;
       await ctx.setOffline(true); await p.reload();
       check("一度開けば電波が無くても開ける（PWA）", await p.isVisible(".lv"));
       const shell = readFileSync(path.join(root, "sw.js"), "utf8");
@@ -218,7 +226,7 @@ if (browser) try {
   check("ページのエラーが出ない", errors.length === 0, [...new Set(errors)].join(" / "));
 } catch (e) {
   check("検査が最後まで動く", false, e.stack || e.message);
-} finally { await browser.close(); }
+} finally { await browser?.close(); }
 if (!results.length) check("検査が1つも動いた", false);
 
 const ng = results.filter((r) => !r.ok);
