@@ -623,11 +623,11 @@ function start(a,mode={kind:'article'}){
 function nextGoal(){
   if(!ARTICLES.some(a=>cleared(a.id)))return null;
   const i=ARTICLES.findIndex(a=>!cleared(a.id));
-  if(i>=0)return {txt:`つづき：記事${i+1}「${ARTICLES[i].site}」`,sub:'まだ読み切っていない記事',go:()=>start(ARTICLES[i])};
+  if(i>=0)return {txt:`つづき：記事${i+1}`,sub:`${ARTICLES[i].site}・まだ読み切っていない記事`,go:()=>start(ARTICLES[i])};
   const g=ARTICLES.find(a=>medal(best(a.id),a,false)!=='🥇');
-  if(g)return {txt:`金をねらう：記事${ARTICLES.indexOf(g)+1}「${g.site}」`,sub:`ベスト ${fmt(best(g.id))}・金は ${fmt(g.gold)} 以内`,go:()=>start(g)};
+  if(g)return {txt:`金をねらう：記事${ARTICLES.indexOf(g)+1}`,sub:`${g.site}・ベスト ${fmt(best(g.id))}・金は ${fmt(g.gold)} 以内`,go:()=>start(g)};
   const h=ARTICLES.find(a=>!bestH(a.id));
-  if(h)return {txt:`上級に挑む：記事${ARTICLES.indexOf(h)+1}「${h.site}」`,sub:'難しい広告だけ・ヒントなし',go:()=>start(h,{kind:'article',hard:true})};
+  if(h)return {txt:`上級に挑む：記事${ARTICLES.indexOf(h)+1}`,sub:`${h.site}・難しい広告だけ・ヒントなし`,go:()=>start(h,{kind:'article',hard:true})};
   if(longN()<12)return {txt:'ロングを読み切る',sub:`最高 ${longN()}/12枚`,go:()=>start(LONG)};
   return null;
 }
