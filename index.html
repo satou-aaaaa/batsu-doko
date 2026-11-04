@@ -564,7 +564,7 @@ function openAd(full){
   const type=ORDER[n], T=TYPES[type], ad=el(T.html(rnd(PRODUCTS)));ad.dataset.type=type;stage.appendChild(ad);
   const w=document.createElement('div');w.className='hint';w.id='hintTxt';w.hidden=true;w.textContent='ヒント：'+T.hint;stage.appendChild(w);
   // はじめての1枚（まだ1枚も閉じたことがない人）は、ヒントを時間なしで先に見せる。最初の1枚でつまずいてやめないように
-  if(MODE.kind!=='practice'&&!MODE.hard&&!(stats().closed||0)&&n===0){w.hidden=false;w.textContent='はじめての1枚なので、ヒントを時間なしで出しています。'+T.hint}
+  if(MODE.kind!=='practice'&&!MODE.hard&&!(stats().closed||0)&&n===0){w.hidden=false;used[n]=true;w.textContent='はじめての1枚なので、ヒントを時間なしで出しています。'+T.hint}
   ad.addEventListener('click',e=>{const t=e.target;
     const r=t.closest('.real');if(r&&!r.disabled)return win();
     if(t.closest('.nest')||t.closest('.skip'))return;
@@ -577,7 +577,7 @@ function openAd(full){
 let popT;function popUp(t){const e=$('#pop');e.textContent=t;e.classList.add('on');clearTimeout(popT);popT=setTimeout(()=>e.classList.remove('on'),650)}
 function win(){
   if(!inAd)return;
-  const type=ORDER[n], sec=Math.max(0,(performance.now()-adT)/1000-(WAIT[type]||0)), q=!used[n]&&sec<=quickLim(type);
+  const type=ORDER[n], sec=Math.max(0,(performance.now()-adT)/1000), q=!used[n]&&sec<=quickLim(type);
   if(MODE.kind==='practice')return practiceEnd(true,'',sec);
   QK[n]=q;if(q){popUp('⚡ 見切り');tone(1320,.09,'triangle',.08)}
   const c=$('#cnt');c.classList.add('hit');setTimeout(()=>c.classList.remove('hit'),400);
@@ -796,7 +796,7 @@ function fromLink(){
   const t=Number(q.get('t')), rival=t>0&&t<10000?Math.round(t*10)/10:0;
   const d=Number(q.get('d')), a=byId(q.get('a')), seed=Number(q.get('s'));
   try{if(q.has('d')||q.has('a'))history.replaceState(null,'',location.pathname)}catch(e){}
-  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),dailyMode(d,rival));return true}
+  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),{...dailyMode(d,rival),late:d<today()&&!dBest(d)});return true}
   if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0,hard:q.get('h')==='1'&&!a.long});return true}
   return false;
 }

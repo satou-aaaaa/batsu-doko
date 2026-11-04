@@ -274,7 +274,7 @@ if (browser) try {
     const p = await open({ unlock: false });
     await p.goto(url + "?d=1&t=12.3"); await p.waitForTimeout(200);
     const card = await p.textContent("#stage .card"), search = await p.evaluate(() => location.search);
-    check("挑戦状のリンク（?d=1&t=12.3）で開くと、相手のタイムつきで今日の1本 #1 が始められる", card.includes("今日の1本 #1") && card.includes("12.3秒") && (await p.isVisible("#go")), card);
+    check("挑戦状のリンク（?d=1&t=12.3）で開くと、相手のタイムつきで #1 が始められる（過去の日はあとからとして）", card.includes("#1") && card.includes("あとから") && card.includes("12.3秒") && (await p.isVisible("#go")), card);
     check("挑戦状の印はアドレスから消える（読み込み直しでふつうに戻る）", search === "", search);
     await p.click("#go"); const vs = await p.evaluate(() => { t0 = performance.now() - 4000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; });
     check("挑戦状の相手より速ければ「勝ち」が出る", vs.includes("勝ち") && vs.includes("12.3秒"), vs);
@@ -290,7 +290,7 @@ if (browser) try {
     for (const q of ["?d=999999&t=1", "?d=abc", "?a=nope&t=3", "?d=1&t=-5"]) {
       await p.goto(url + q); await p.waitForTimeout(150);
       const txt = await p.textContent("#stage .card");
-      const ok = q === "?d=1&t=-5" ? txt.includes("今日の1本 #1") && !txt.includes("挑戦状") : !!(await p.$("#dailyBtn"));
+      const ok = q === "?d=1&t=-5" ? txt.includes("1本") && txt.includes("#1") && !txt.includes("挑戦状") : !!(await p.$("#dailyBtn"));
       check(`おかしな挑戦状のリンク（${q}）でも壊れない`, ok, txt.slice(0, 40));
     }
     await p.close();
@@ -553,7 +553,10 @@ if (browser) try {
     check("上級の日も、同じ日ならだれでも同じ並び", sameH === 1, sameH);
     await p.addInitScript(() => { window.__XDOKO_DAY = 10; });
     await p.goto(url + "?d=6&t=50"); await p.waitForTimeout(200);
-    check("上級の日の挑戦状のリンクを開くと、上級の日で始まる", (await p.textContent("#stage .card")).includes("今日の1本 #6 上級の日"));
+    const h6 = await p.evaluate(() => ({ hard: !!MODE.hard, late: !!MODE.late, day: MODE.day }));
+    check("上級の日の挑戦状のリンク（過去の日）を開くと、上級のまま「あとから」で始まる", h6.hard && h6.late && h6.day === 6, JSON.stringify(h6));
+    await p.evaluate(() => { localStorage.setItem("xdoko-daily-6", "40.0"); }); await p.goto(url + "?d=6&t=50"); await p.waitForTimeout(200);
+    check("その日をもう読み切っていれば、過去の日の挑戦状はあとからにしない（記録は今日の1本のほう）", await p.evaluate(() => MODE.day === 6 && !MODE.late));
     await p.close();
   }
 
@@ -591,17 +594,21 @@ if (browser) try {
     const p = await open({ unlock: false });
     const q = await p.evaluate(() => {
       const lim = Object.keys(TYPES).map((k) => [k, quickLim(k), TYPES[k].lv]);
+      // はじめての1枚はヒントが自動で出る＝ヒントを見た広告なので、見切りに数えない
       localStorage.clear(); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
+      ORDER[n] = "corner"; openAd(true); adT = performance.now() - 300; win(); const firstAuto = QK[0];
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 })); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
       const close = (type, ago, hint) => { ORDER[n] = type; openAd(true); adT = performance.now() - ago * 1000; if (hint) { $("#hintBtn").click(); } win(); };
       close("corner", 1.0); const pop = document.querySelector("#pop").classList.contains("on") && document.querySelector("#pop").textContent;
       close("corner", 3.0); close("countdown", 7.5); close("corner", 0.5, true);
       const qk = QK.slice(); finish();
       const line = document.querySelector("#quickLine")?.textContent || "", all1 = localStorage.getItem("xdoko-quickall");
       start(ARTICLES[0]); running = true; t0 = performance.now() - 15000; for (let i = 0; i < 4; i++) close("corner", 0.4); finish();
-      return { lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
+      return { firstAuto, lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
     });
     check("見切りの目安は★1が2.5秒・★2が3秒・★3が3.5秒、待つ広告（待たされる×・動画）は待つ5秒を足す", q.lim.every(([k, v, lv]) => v === ({ 1: 2.5, 2: 3, 3: 3.5 })[lv] + (["countdown", "video"].includes(k) ? 5 : 0)), JSON.stringify(q.lim));
-    check("すばやく閉じると ⚡見切り が一瞬出て、おそい・ヒントを見た広告は見切りにならない（待つ広告は待ちの後から数える）", q.pop === "⚡ 見切り" && q.qk.join() === "true,false,true,false", JSON.stringify({ pop: q.pop, qk: q.qk }));
+    check("すばやく閉じると ⚡見切り が一瞬出て、おそい・ヒントを見た広告は見切りにならない（待つ広告は出てからの時間を、待ちの5秒を足した目安と比べる）", q.pop === "⚡ 見切り" && q.qk.join() === "true,false,true,false", JSON.stringify({ pop: q.pop, qk: q.qk }));
+    check("はじめての1枚（ヒントが自動で出る）は、すばやく閉じても見切りに数えない", q.firstAuto === false, String(q.firstAuto));
     check("結果に「⚡ 見切り 2/4枚」が出て、全部でなければ実績の印は残さない", q.line.includes("⚡ 見切り 2/4枚") && !q.line.includes("全部") && q.all1 === null, JSON.stringify(q));
     check("全部見切ると「全部見切った！」と実績「ぜんぶ見切り」が取れ、結果に出る", q.line2.includes("4/4枚") && q.line2.includes("全部見切った") && q.all2 === "1" && q.got && q.ach.includes("ぜんぶ見切り"), JSON.stringify(q).slice(0, 300));
     await p.waitForTimeout(800);
