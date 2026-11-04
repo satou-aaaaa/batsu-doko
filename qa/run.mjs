@@ -523,7 +523,7 @@ if (browser) try {
   {
     const p = await open({ unlock: false });
     const a0 = await p.evaluate(() => ({ got: achGot(), n: ACH.length, ids: new Set(ACH.map((x) => x[0])).size }));
-    check("実績は15個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 15 && a0.ids === 15 && a0.got.length === 0, JSON.stringify(a0));
+    check("実績は17個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 17 && a0.ids === 17 && a0.got.length === 0, JSON.stringify(a0));
     await p.click('.lv[data-i="0"]'); await p.click("#go"); await playOn(p, "記事1");
     const r1 = await p.evaluate(() => document.querySelector("#achNew")?.textContent || "");
     check("はじめて読み切ると、結果に新しい実績（はじめて読み切った・ヒントなし）が出る", r1.includes("はじめて読み切った") && r1.includes("ヒントなし"), r1);
@@ -532,10 +532,10 @@ if (browser) try {
     const st = await p.evaluate(() => { localStorage.setItem("xdoko-streak", JSON.stringify({ last: 1, count: 7, max: 7 })); localStorage.setItem("xdoko-long-n", "12"); return achGot(); });
     check("7日連続・ロング完走などは、今の記録から数える", ["streak3", "streak7", "long6", "long12"].every((k) => st.includes(k)), st.join());
     await p.evaluate(() => menu());
-    check("メニューの図鑑のボタンに、実績の数が出る", (await p.textContent("#dexBtn")).includes("実績 " + st.length + "/15"), await p.textContent("#dexBtn"));
-    await p.click("#dexBtn");
+    check("メニューの実績のボタンに、実績の数が出る", (await p.textContent("#achBtn")).includes("実績 " + st.length + "/17"), await p.textContent("#achBtn"));
+    await p.click("#achBtn");
     const dv = await p.evaluate(() => ({ got: document.querySelectorAll(".ach > div:not(.no)").length, no: document.querySelectorAll(".ach > .no").length, txt: document.querySelector(".ach").textContent }));
-    check("図鑑の画面に実績の一覧があり、まだのものも条件が見える", dv.got === st.length && dv.no === 15 - st.length && dv.txt.includes("上級で金メダル"), JSON.stringify(dv).slice(0, 200));
+    check("実績の画面に一覧があり、まだのものも条件が見える", dv.got === st.length && dv.no === 17 - st.length && dv.txt.includes("上級で金メダル"), JSON.stringify(dv).slice(0, 200));
     await p.goto(url + "?a=recipe&t=999&s=5"); await p.waitForTimeout(200); await p.click("#go"); await playOn(p, "挑戦状");
     check("挑戦状の相手に勝つと、実績「挑戦状に勝つ」が取れる", await p.evaluate(() => achGot().includes("rival")));
     await p.close();
@@ -583,6 +583,137 @@ if (browser) try {
     await solve(p); await p.waitForTimeout(60);
     for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
     check("2枚目からは、ヒントは押したときだけ出る", await p.evaluate(() => document.querySelector("#hintTxt").hidden));
+    await p.close();
+  }
+
+  // 5l. 見切り：出てすぐ（待つ広告は閉じられるようになってから）閉じると ⚡見切り。ヒントを見た広告は数えない
+  {
+    const p = await open({ unlock: false });
+    const q = await p.evaluate(() => {
+      const lim = Object.keys(TYPES).map((k) => [k, quickLim(k), TYPES[k].lv]);
+      localStorage.clear(); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
+      const close = (type, ago, hint) => { ORDER[n] = type; openAd(true); adT = performance.now() - ago * 1000; if (hint) { $("#hintBtn").click(); } win(); };
+      close("corner", 1.0); const pop = document.querySelector("#pop").classList.contains("on") && document.querySelector("#pop").textContent;
+      close("corner", 3.0); close("countdown", 7.5); close("corner", 0.5, true);
+      const qk = QK.slice(); finish();
+      const line = document.querySelector("#quickLine")?.textContent || "", all1 = localStorage.getItem("xdoko-quickall");
+      start(ARTICLES[0]); running = true; t0 = performance.now() - 15000; for (let i = 0; i < 4; i++) close("corner", 0.4); finish();
+      return { lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
+    });
+    check("見切りの目安は★1が2.5秒・★2が3秒・★3が3.5秒、待つ広告（待たされる×・動画）は待つ5秒を足す", q.lim.every(([k, v, lv]) => v === ({ 1: 2.5, 2: 3, 3: 3.5 })[lv] + (["countdown", "video"].includes(k) ? 5 : 0)), JSON.stringify(q.lim));
+    check("すばやく閉じると ⚡見切り が一瞬出て、おそい・ヒントを見た広告は見切りにならない（待つ広告は待ちの後から数える）", q.pop === "⚡ 見切り" && q.qk.join() === "true,false,true,false", JSON.stringify({ pop: q.pop, qk: q.qk }));
+    check("結果に「⚡ 見切り 2/4枚」が出て、全部でなければ実績の印は残さない", q.line.includes("⚡ 見切り 2/4枚") && !q.line.includes("全部") && q.all1 === null, JSON.stringify(q));
+    check("全部見切ると「全部見切った！」と実績「ぜんぶ見切り」が取れ、結果に出る", q.line2.includes("4/4枚") && q.line2.includes("全部見切った") && q.all2 === "1" && q.got && q.ach.includes("ぜんぶ見切り"), JSON.stringify(q).slice(0, 300));
+    await p.waitForTimeout(800);
+    check("見切りの知らせは少しで消える（押す所をふさがない）", await p.evaluate(() => !document.querySelector("#pop").classList.contains("on") && getComputedStyle(document.querySelector("#pop")).pointerEvents === "none"));
+    const pr = await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } })); practice("corner"); adT = performance.now() - 1200; win(); const a = document.querySelector("#prTime")?.textContent || ""; practice("corner"); adT = performance.now() - 6000; win(); const b = document.querySelector("#prTime")?.textContent || ""; return { a, b, st: localStorage.getItem("xdoko-stats") }; });
+    check("練習で閉じると、閉じるまでの秒数と見切りの目安が出る（記録は増えない）", pr.a.includes("閉じるまで 1.2秒") && pr.a.includes("見切り！") && pr.b.includes("見切りは 2.5秒 以内") && pr.st === null, JSON.stringify(pr));
+    await p.close();
+  }
+
+  // 5m. 実績の画面：まだのものは「いま/目標」と進み具合のバー。合計の日数（あとからも数える）
+  {
+    const p = await open({ unlock: false });
+    const a = await p.evaluate(() => {
+      localStorage.clear(); window.__XDOKO_DAY = 20;
+      [3, 5, 9].forEach((d) => localStorage.setItem("xdoko-daily-" + d, "30.0")); localStorage.setItem("xdoko-late-15", "40.0");
+      localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 4, closed: 40, virus: 0 }));
+      const n4 = playedDays(), g4 = achGot().includes("days7");
+      [11, 12, 13].forEach((d) => localStorage.setItem("xdoko-late-" + d, "40.0"));
+      const n7 = playedDays(), g7 = achGot().includes("days7");
+      [11, 12, 13].forEach((d) => localStorage.removeItem("xdoko-late-" + d)); menu(); document.querySelector("#achBtn").click();
+      const row = (id) => document.querySelector(`[data-ach="${id}"]`);
+      return { n4, g4, n7, g7, days: row("days7").textContent, closed: row("closed100").textContent, bar: row("closed100").querySelector(".bar u").style.width, first: row("first").textContent, firstNo: row("first").classList.contains("no") };
+    });
+    check("読み切った日の合計は、今日の1本とあとからの両方を数え、7日で実績「7日読んだ」", a.n4 === 4 && !a.g4 && a.n7 === 7 && a.g7, JSON.stringify(a));
+    check("まだの実績は「いま/目標」とバーで進み具合が出る（4/7・40/100）、取れた実績には ✓", a.days.includes("4/7") && a.closed.includes("40/100") && a.bar === "40%" && !a.firstNo && a.first.includes("✓"), JSON.stringify(a));
+    await p.click("#achBack"); check("実績の画面からメニューへ戻れる", !!(await p.$("#dailyBtn")));
+    await p.close();
+  }
+
+  // 5n. カレンダーと、取りこぼした日をあとから遊ぶ
+  // 日をずらす数は環境変数で変えられる（QA_CAL_TODAY=今日の番号・QA_LATE_BACK=何日前を遊ぶか）。月をまたぐ組（#30＝12月2日から4日前）も毎回通す
+  {
+    const CAL_T = Number(process.env.QA_CAL_TODAY || 20), LATE_BACK = Number(process.env.QA_LATE_BACK || 3);
+    const p = await open({ unlock: false });
+    // 何百日ぶんも：取りこぼした日の一覧は、過去7日・#1以降・まだ読んでいない日だけ
+    const ld = await p.evaluate(() => {
+      const bad = []; localStorage.clear();
+      for (let d = 1; d <= 400; d++) { if (d % 3 === 0) localStorage.setItem("xdoko-daily-" + d, "30.0"); if (d % 5 === 0) localStorage.setItem("xdoko-late-" + d, "30.0"); }
+      for (let t = 1; t <= 400; t++) {
+        const got = lateDays(t), want = []; for (let d = t - 1; d >= Math.max(1, t - 7); d--) if (d % 3 && d % 5) want.push(d);
+        if (got.join() !== want.join()) bad.push(t);
+      }
+      localStorage.clear(); return bad;
+    });
+    check("取りこぼした日の一覧を400日ぶん作って、どれも過去7日・#1以降・まだ読んでいない日だけ", ld.length === 0, ld.slice(0, 5).join(","));
+    // あとからの問題は、その日の今日の1本と同じ（300日ぶん）
+    const same = await p.evaluate(() => {
+      const bad = [];
+      for (let d = 1; d <= 300; d++) {
+        start(dailyArt(d), dailyMode(d)); const a = [ORDER.join(), $("#art").innerHTML, MODE.hard];
+        start(dailyArt(d), { ...dailyMode(d), late: true }); const b = [ORDER.join(), $("#art").innerHTML, MODE.hard];
+        if (a.join("|") !== b.join("|")) bad.push(d);
+      }
+      menu(); return bad;
+    });
+    check("あとから遊ぶ1本は、300日ぶんどれもその日の今日の1本と同じ広告の並び・置き場所・上級の日", same.length === 0, same.slice(0, 5).join(","));
+    // 結果：今日の記録・連続・Ko-fi に数えない。記録は xdoko-late-<日> に分けて残る
+    const lr = await p.evaluate(() => {
+      localStorage.clear(); window.__XDOKO_DAY = 20; const sk = JSON.stringify({ last: 19, count: 2, max: 2 }); localStorage.setItem("xdoko-streak", sk);
+      start(dailyArt(15), { ...dailyMode(15), late: true }); const card = document.querySelector("#stage .card").textContent;
+      running = true; t0 = performance.now() - 30000; finish();
+      const r = { card, daily: localStorage.getItem("xdoko-daily-15"), late: localStorage.getItem("xdoko-late-15"), sk: localStorage.getItem("xdoko-streak") === sk, kofi: !!document.querySelector("#kofi"), txt: document.querySelector("#shareTxt").textContent, res: document.querySelector("#stage .card").textContent };
+      menu(); r.menu = document.querySelector("#dailyBtn").textContent; return r;
+    });
+    check("あとからの始めのカードに「あとから」と日付・連続に数えないことが出る", lr.card.includes("11月17日の1本（あとから）") && lr.card.includes("#15") && lr.card.includes("連続には数えません"), lr.card);
+    check("あとから読み切っても、今日の記録・連続は増えず、記録は別（xdoko-late）に残る", lr.daily === null && Number(lr.late) > 0 && lr.sk, JSON.stringify(lr).slice(0, 200));
+    check("あとからの結果に Ko-fi のひとこと・連続は出ず、共有の文は「（あとから）」で連続を入れない", !lr.kofi && lr.txt.includes("（あとから）") && !lr.txt.includes("連続") && !lr.res.includes("連続"), lr.txt);
+    check("あとから読んでも、メニューの今日の1本は遊ぶ前のまま", lr.menu.includes("遊ぶ") && lr.menu.includes("🔥2日連続"), lr.menu);
+    // カレンダー：印・前の月・連続の言葉（1以上だけ）・責める言葉を書かない
+    const cal = async (setup) => p.evaluate((setup) => { localStorage.clear(); window.__XDOKO_DAY = setup.t; for (const [k, v] of Object.entries(setup.ls || {})) localStorage.setItem(k, v); menu(); document.querySelector("#calBtn").click(); return document.querySelector("#stage .card").textContent; }, setup);
+    const openTo = async (d) => { for (let k = 0; k < 24 && !(await p.$(`.cal [data-d="${d}"]`)); k++) { if (await p.isDisabled("#calPrev")) break; await p.click("#calPrev"); } return p.$(`.cal [data-d="${d}"]`); };
+    const t1 = await cal({ t: 20, ls: { "xdoko-daily-18": "30.0", "xdoko-daily-10": "30.0", "xdoko-late-15": "40.0", "xdoko-streak": JSON.stringify({ last: 18, count: 1, max: 1 }) } });
+    const marks = await p.evaluate(() => { const c = (d) => document.querySelector(`.cal [data-d="${d}"]`); return { pl: c(18).className, pl2: c(10).className, late: c(15).className, miss: [...document.querySelectorAll(".cal .miss")].map((b) => +b.dataset.d).sort((a, b) => a - b).join(), td: document.querySelector(".cal .td")?.textContent, month: document.querySelector("#calMonth").textContent, menuSmall: "" }; });
+    check("カレンダー：今日の1本の日は ★（濃い色）、あとからの日は ↺（薄い色）、今日に枠", marks.pl.includes("pl") && marks.pl2.includes("pl") && marks.late.includes("late") && marks.month === "2026年11月" && marks.td?.startsWith("22"), JSON.stringify(marks));
+    check("カレンダー：過去7日のまだの日だけ押せる（#13・14・16・17・19）", marks.miss === "13,14,16,17,19", marks.miss);
+    check("カレンダー：連続は1以上のときだけ出し、0のときは出さない・休んだ日を責める言葉は書かない", !t1.includes("連続") && t1.includes("合わせて 3日") && !/(休|サボ|途切|さぼ|残念|忘れ)/.test(t1), t1);
+    const t2 = await cal({ t: 20, ls: { "xdoko-daily-19": "30.0", "xdoko-streak": JSON.stringify({ last: 19, count: 1, max: 1 }) } });
+    check("カレンダー：連続が1日でも小さく出る", t2.includes("🔥 1日連続"), t2.slice(-80));
+    const mb = await p.evaluate(() => { window.__XDOKO_DAY = 20; localStorage.clear(); menu(); return document.querySelector("#calBtn").textContent; });
+    check("メニューのカレンダーのボタンに、あとから読める日数が出る", mb.includes("あとから 7日"), mb);
+    // 月をまたぐ：12月から前の月へ戻って押す。#1 の月より前には戻れない
+    for (const [T, back] of [[CAL_T, LATE_BACK], [30, 4]]) {
+      await cal({ t: T, ls: {} });
+      const d = T - back, cell = await openTo(d);
+      const ok = !!cell && (await cell.evaluate((e) => e.matches("button.miss")));
+      if (ok) await cell.click();
+      const card = ok ? await p.textContent("#stage .card") : "";
+      const m = await p.evaluate(() => ({ late: !!MODE.late, day: MODE.day }));
+      check(`カレンダーの日（今日 #${T} の ${back}日前）を、その月まで戻って押すと、あとから始まる`, ok && card.includes("あとから") && m.late && m.day === d, JSON.stringify({ ok, m, card: card.slice(0, 40) }));
+    }
+    await cal({ t: 30, ls: {} });
+    const nav = await p.evaluate(() => { const a = [document.querySelector("#calMonth").textContent, document.querySelector("#calPrev").disabled, document.querySelector("#calNext").disabled]; document.querySelector("#calPrev").click(); return a.concat([document.querySelector("#calMonth").textContent, document.querySelector("#calPrev").disabled, document.querySelector("#calNext").disabled]); });
+    check("カレンダー：前の月へ戻れて、#1（2026年11月）より前・今月より先へは行けない", nav.join() === "2026年12月,false,true,2026年11月,true,false", nav.join());
+    // 古いタブ：もう読み切った日を押しても始めない
+    const stale = await p.evaluate(() => { localStorage.clear(); window.__XDOKO_DAY = 20; menu(); document.querySelector("#calBtn").click(); localStorage.setItem("xdoko-daily-17", "30.0"); document.querySelector('.cal [data-d="17"]').click(); return { cal: !!document.querySelector("#cal"), late: !!MODE.late, say: document.querySelector("#say").textContent }; });
+    check("古いタブで、もう読み切った日を押しても始めず、知らせてカレンダーに戻る", stale.cal && !stale.late && stale.say.includes("もう読み切って"), JSON.stringify(stale));
+    // スマホ幅 320px：実績・カレンダーが横にはみ出さない・押せる所は44px以上・キーで選ぶと枠が見える
+    await p.setViewportSize({ width: 320, height: 640 });
+    const fit = [];
+    for (const scr of ["showAch()", "showCal()", "menu()"]) {
+      await p.evaluate((scr) => { window.__XDOKO_DAY = 20; localStorage.clear(); localStorage.setItem("xdoko-daily-18", "30.0"); eval(scr); }, scr);
+      await p.waitForTimeout(400); // 出てくるときの動き（少し小さく出る）が終わってから測る
+      const r = await p.evaluate(() => {
+        const card = document.querySelector("#stage .card").getBoundingClientRect(), btns = [...document.querySelectorAll("#stage button")].filter((b) => b.offsetParent).map((b) => [b.id || b.className, Math.round(b.getBoundingClientRect().height)]);
+        return { sw: document.documentElement.scrollWidth, sw2: document.querySelector("#stage").scrollWidth, right: card.right, small: btns.filter(([, h]) => h < 44) }; });
+      fit.push([scr, r]);
+    }
+    check("幅320pxで、実績・カレンダー・メニューが横にはみ出さず、押せる所は高さ44px以上", fit.every(([, r]) => r.sw <= 320 && r.sw2 <= 320 && r.right <= 320 && r.small.length === 0), JSON.stringify(fit));
+    await p.evaluate(() => showCal()); await p.keyboard.press("Tab");
+    const fv = await p.evaluate(() => [...document.querySelectorAll("#stage button:not([disabled]), #stage a")].map((b) => { b.focus(); const cs = getComputedStyle(b); return [b.id || b.className, b.matches(":focus-visible"), parseFloat(cs.outlineWidth), cs.outlineStyle]; }));
+    check("カレンダーの押せる所は、キーで選ぶと2px以上の枠が見える", fv.length > 0 && fv.every(([, v, w, s]) => v && w >= 2 && s !== "none"), JSON.stringify(fv));
+    await p.evaluate(() => { delete window.__XDOKO_DAY; });
     await p.close();
   }
 
