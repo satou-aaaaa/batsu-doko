@@ -901,6 +901,59 @@ if (browser) try {
 } finally { await browser?.close(); }
 if (!results.length) check("検査が1つも動いた", false);
 
+{ // 色だけで分けない・知らせを文字で・キーボード（shared-workflows routines/game-dev.md「だれでも遊べるように」A1・A6・A7・A8）
+  let b2 = null;
+  try {
+    b2 = await chromium.launch(exe ? { executablePath: exe } : {});
+    for (const [label, a11y] of [["ふつう", null], ["色の見分けを助ける・動きを減らす", { cvd: true, calm: true }]]) {
+      const ctx = await b2.newContext({ viewport: { width: W, height: H } });
+      if (a11y) await ctx.addInitScript((s) => { localStorage.setItem("a11y-v1", JSON.stringify(s)); }, a11y);
+      const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
+      await p.goto(url);
+      // まだ開いていない記事：うすくしただけでなく 🔒 の文字と点線の枠
+      const lock = await p.evaluate(() => [...document.querySelectorAll(".lv[disabled]")].map((b) => ({ t: b.textContent.includes("🔒"), dash: getComputedStyle(b).borderStyle === "dashed", op: +getComputedStyle(b).opacity })));
+      check(`まだ開いていない記事は 🔒 と点線の枠でも分かる（色・うすさだけでない）：${label}`, lock.length > 0 && lock.every((x) => x.t && x.dash && x.op === 1), JSON.stringify(lock.slice(0, 3)));
+      // カレンダー：今日の1本 ★・あとから ↺・あとから読める日 ▶（点線）
+      const cal = await p.evaluate(() => { window.__XDOKO_DAY = 5; localStorage.setItem("xdoko-daily-3", "30.0"); localStorage.setItem("xdoko-late-2", "40.0"); showCal();
+        const q = (s) => document.querySelector(s); const r = { pl: q(".cal .pl i")?.textContent, late: q(".cal .late i")?.textContent, miss: q(".cal .miss i")?.textContent, missDash: getComputedStyle(q(".cal .miss")).borderStyle, legend: q(".legend").textContent };
+        localStorage.removeItem("xdoko-daily-3"); localStorage.removeItem("xdoko-late-2"); delete window.__XDOKO_DAY; return r; });
+      check(`カレンダーの日は記号でも分かる（★ 今日の1本・↺ あとから・▶ 点線 あとから読める）：${label}`, cal.pl === "★" && cal.late === "↺" && cal.miss === "▶" && cal.missDash === "dashed" && /★/.test(cal.legend) && /↺/.test(cal.legend), JSON.stringify(cal));
+      // 勝ち負け・まちがいの文に ✓・✕ が付く
+      const wl = await p.evaluate(() => { const a = document.createElement("p"); a.className = "won"; const b = document.createElement("p"); b.className = "lost"; document.body.append(a, b);
+        const r = [getComputedStyle(a, "::before").content, getComputedStyle(b, "::before").content, getComputedStyle(a).color, getComputedStyle(b).color]; a.remove(); b.remove(); return r; });
+      check(`勝ち・負け（まちがい）の文は色に加えて ✓・✕ でも分かる：${label}`, /✓/.test(wl[0]) && /✕/.test(wl[1]) && wl[2] !== wl[3], wl.join(" | "));
+      if (a11y) check("色の見分けを助ける設定では、赤と緑の組（--hot・--ok）を朱と青に替える", await p.evaluate(() => { const cs = getComputedStyle(document.documentElement); return cs.getPropertyValue("--hot").trim().toLowerCase() === "#b84f00" && cs.getPropertyValue("--ok").trim().toLowerCase() === "#0072b2"; }));
+      // 知らせの場所：閉じた・+5秒（#say）、広告が出た・ゲームオーバー（#sr）、ヒントの文（#hintTxt）
+      await p.evaluate(() => { window.__vib = 0; navigator.vibrate = () => { window.__vib++; return true; }; soundOn = true; menu(); });
+      await p.click("#dailyBtn"); await p.click("#go");
+      const live = await p.evaluate(() => ({ say: document.querySelector("#say").getAttribute("aria-live"), sr: document.querySelector("#sr").getAttribute("role"), focus: document.activeElement?.id }));
+      await p.evaluate(() => { ORDER[n] = "corner"; openAd(); });
+      await p.waitForTimeout(150);
+      const ad = await p.evaluate(() => ({ sr: document.querySelector("#sr").textContent, inAd: !!document.activeElement?.closest("#stage"), hint: document.querySelector("#hintTxt").getAttribute("role") }));
+      check(`知らせは文字でも読み上げソフトに届く（#say aria-live・#sr role=status・ヒントの文 role=status・広告が出たら「広告が出て」）：${label}`, live.say === "polite" && live.sr === "status" && ad.hint === "status" && /広告が出/.test(ad.sr), JSON.stringify({ live, ad }));
+      check(`広告が出たら、キーボードの選ぶ所が広告の中へ移る（Tab で閉じる所を探せる）：${label}`, ad.inAd && live.focus === "page", JSON.stringify({ live, ad }));
+      await p.keyboard.press("Tab"); await p.keyboard.press("Enter"); await p.waitForTimeout(150);
+      const after = await p.evaluate(() => ({ closed: n === 1 && !inAd, focus: document.activeElement?.id }));
+      check(`キーボード（Tab と Enter）だけで広告を閉じられ、閉じたあとは記事に戻る：${label}`, after.closed && after.focus === "page", JSON.stringify(after));
+      await p.evaluate(() => fail("テスト"));
+      await p.waitForSelector("#virus.done", { timeout: 4000 });
+      const v = await p.evaluate(() => ({ sr: document.querySelector("#sr").textContent, focus: document.activeElement?.id, vib: window.__vib, anim: getComputedStyle(document.querySelector("#virus .warn")).animationIterationCount }));
+      check(`感染の画面：ゲームオーバーを文字で知らせ、「もう一度」に選ぶ所を移す：${label}`, /ゲームオーバー/.test(v.sr) && v.focus === "againBtn", JSON.stringify(v));
+      if (a11y) check("動きを減らす設定では、感染の画面の点滅を止め、端末をふるわせない", v.vib === 0 && v.anim === "1", JSON.stringify(v));
+      else check("動きを減らさないときは、音ありなら端末を短くふるわせる（感染の画面）", v.vib === 1, JSON.stringify(v));
+      check(`見やすさの検査のあいだ画面のエラーが無い：${label}`, errs.length === 0, errs.join(" | "));
+      await ctx.close();
+    }
+  } catch (e) { check("色だけで分けない・知らせ・キーボードの検査が最後まで動く", false, e.stack || e.message); }
+  finally { await b2?.close(); }
+}
+
+{ // 見やすさ・読みやすさ・偏り（shared-workflows template/qa/a11y.mjs の写し。routines/game-dev.md「だれでも遊べるように」）
+  const { spawnSync } = await import("node:child_process");
+  const a = spawnSync(process.execPath, [path.join(root, "qa", "a11y.mjs")], { encoding: "utf8", env: process.env });
+  check("見やすさ・読みやすさの検査（qa/a11y.mjs。中身は qa-report/a11y.md）", a.status === 0, (a.stdout.match(/^- ❌.*$/gm) || []).join(" / ") || (a.status ? a.stderr.slice(-300) : ""));
+}
+
 const ng = results.filter((r) => !r.ok);
 const md = [`# ×はどこだ 検査の結果`, ``, ng.length ? `**${ng.length} 件の失敗**` : `すべて合格（${results.length} 件）`, ``,
   ...results.map((r) => `- ${r.ok ? "✅" : "❌"} ${r.name}${r.ok || !r.detail ? "" : "：" + r.detail.replace(/\n/g, " ")}`)].join("\n");
