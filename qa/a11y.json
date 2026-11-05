@@ -1,0 +1,10 @@
+{
+  "screens": [
+    { "name": "今日の1本の始め", "click": ["#dailyBtn"] },
+    { "name": "記事を読む", "click": ["#dailyBtn", "#go"] },
+    { "name": "感染の画面", "click": ["#dailyBtn", "#go", ".inad"] },
+    { "name": "広告図鑑", "click": ["#dexBtn"] },
+    { "name": "実績", "click": ["#achBtn"] },
+    { "name": "カレンダー", "click": ["#calBtn"] }
+  ]
+}
