@@ -641,7 +641,7 @@ if (browser) try {
       running = true; t0 = performance.now() - 20000; const all = ORDER.length; for (let i = 0; i < all; i++) { ORDER[n] = "corner"; openAd(true); adT = performance.now() - 400; win(); } // 全部すばやく閉じて（全部見切り・ヒントなし・相手に勝つ）から読み切る
       const qk = QK.filter(Boolean).length === all; finish(); const out = document.querySelector("#stage .card").textContent; const st1 = JSON.parse(localStorage.getItem("xdoko-stats")); const ach1 = { qk, nohint: localStorage.getItem("xdoko-nohint"), quick: localStorage.getItem("xdoko-quickall"), won: localStorage.getItem("xdoko-won"), clear: st1.clear, closed: st1.closed, dex: JSON.parse(localStorage.getItem("xdoko-dex")).corner.n };
       // 8日前の挑戦状で押してはいけない所を押しても、感染の数を増やさない
-      const v0 = JSON.parse(localStorage.getItem("xdoko-stats")).virus; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50"); fromLink(); const mOld = MODE.old; running = true; try { fail("qa"); } catch (e) {} // 感染の画面はこの検査のページに無い部品もあるので、数だけ見る
+      const v0 = JSON.parse(localStorage.getItem("xdoko-stats")).virus; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50"); fromLink(); const mOld = MODE.old; running = true; const vz = virus; virus = () => {}; try { fail("qa"); } finally { virus = vz; } // 感染の画面はこの検査のページに無い部品を使うので一時的に止め、ほかの例外はそのまま失敗にする
       ach1.virusOld = mOld && JSON.parse(localStorage.getItem("xdoko-stats")).virus === v0;
       history.replaceState(null, "", location.pathname + "?d=" + k + "&t=50"); fromLink(); const m2 = { late: MODE.late, old: MODE.old };
       const keys = Object.keys(localStorage).filter((x) => /^xdoko-(late|daily)-/.test(x));
