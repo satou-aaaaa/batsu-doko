@@ -624,7 +624,7 @@ if (browser) try {
     const p = await open({ unlock: false });
     const r = await p.evaluate(() => {
       localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
-      const d = today() - 1; start(dailyArt(d), dailyMode(d)); running = true; t0 = performance.now() - 20000; finish();
+      const d = today(); window.__XDOKO_DAY = d; start(dailyArt(d), dailyMode(d)); running = true; t0 = performance.now() - 20000; window.__XDOKO_DAY = d + 1; finish(); delete window.__XDOKO_DAY; // 今日で始め、読み切る前に日付だけ進める
       return { late: localStorage.getItem("xdoko-late-" + d), daily: localStorage.getItem("xdoko-daily-" + d), streak: localStorage.getItem("xdoko-streak") };
     });
     check("0時をまたいで読み切った今日の1本は xdoko-late- に入り、xdoko-daily-・連続には入らない", !!r.late && r.daily === null && r.streak === null, JSON.stringify(r));
@@ -637,7 +637,7 @@ if (browser) try {
       localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
       const T = 30; window.__XDOKO_DAY = T; const d = T - 8, k = T - 7; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50");
       fromLink(); const m1 = { late: MODE.late, old: MODE.old, card: document.querySelector("#stage .card").textContent };
-      running = true; t0 = performance.now() - 20000; finish(); const out = document.querySelector("#stage .card").textContent;
+      running = true; t0 = performance.now() - 20000; finish(); const out = document.querySelector("#stage .card").textContent; const ach1 = { nohint: localStorage.getItem("xdoko-nohint"), quick: localStorage.getItem("xdoko-quickall"), clear: JSON.parse(localStorage.getItem("xdoko-stats")).clear };
       history.replaceState(null, "", location.pathname + "?d=" + k + "&t=50"); fromLink(); const m2 = { late: MODE.late, old: MODE.old };
       const keys = Object.keys(localStorage).filter((x) => /^xdoko-(late|daily)-/.test(x));
       // 7日前に始め、読み切る前に日付が進んで8日前になった：あとからにも入れない
@@ -647,11 +647,12 @@ if (browser) try {
       // 記録がある過去の日（7日以内）の結果に「今日の1本」と連続を出さない
       localStorage.setItem("xdoko-daily-" + (T - 2), "99.0"); localStorage.setItem("xdoko-streak", JSON.stringify({ count: 5, last: T, max: 5 })); history.replaceState(null, "", location.pathname + "?d=" + (T - 2)); fromLink(); running = true; t0 = performance.now() - 20000; finish(); const sh = document.querySelector("#shareTxt").textContent;
       delete window.__XDOKO_DAY;
-      return { m1, m2, keys, out: out.includes("記録には残りません"), m3, k3, m4, k4, sh: !sh.includes("今日の1本") && !sh.includes("連続") };
+      return { m1, m2, keys, ach1, out: out.includes("記録には残りません"), m3, k3, m4, k4, sh: !sh.includes("今日の1本") && !sh.includes("連続") };
     });
     check("8日前の挑戦状は遊べるが記録に残さず、7日前まではあとから", r.m1.old && !r.m1.late && r.m1.card.includes("記録に残りません") && r.out && r.keys.length === 0 && r.m2.late && !r.m2.old, JSON.stringify(r));
     check("7日前に始めて8日前になってから読み切っても「あとから」に入れず、8日前の記録も上書きしない（2026-11-05 CodeRabbit）", r.m3 === true && r.k3 === null && r.m4 === true && r.k4 === "99.0", JSON.stringify(r));
     check("記録がある過去の日の挑戦状の結果に「今日の1本」と連続を出さない（2026-11-05 CodeRabbit）", r.sh, JSON.stringify(r));
+    check("8日前の挑戦状は実績（ヒントなし・ぜんぶ見切り）も読み切った数も増やさない（2026-11-05 CodeRabbit）", r.ach1.nohint === null && r.ach1.quick === null && r.ach1.clear === 0, JSON.stringify(r.ach1));
     await p.close();
   }
 

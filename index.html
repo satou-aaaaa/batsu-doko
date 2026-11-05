@@ -631,8 +631,9 @@ function finish(){
   if(MODE.kind==='daily'&&MODE.day<today()-7)MODE={...MODE,late:false,old:true}; // 遊ぶあいだに7日を過ぎた日も、記録に残さない
   if(MODE.kind==='daily'&&!MODE.late&&!MODE.old&&MODE.day!==today()&&!dBest(MODE.day))MODE={...MODE,late:true};
   stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
-  const had=achGot(), qk=QK.filter(Boolean).length, N=ORDER.length;if(!hints)store.set('xdoko-nohint','1');
-  if(qk===N&&!hints)store.set('xdoko-quickall','1');
+  const had=achGot(), qk=QK.filter(Boolean).length, N=ORDER.length, isOld=MODE.kind==='daily'&&MODE.old; // 7日より前の挑戦状は実績・読み切った数にも入れない
+  if(!hints&&!isOld)store.set('xdoko-nohint','1');
+  if(qk===N&&!hints&&!isOld)store.set('xdoko-quickall','1');
   let b,nb;
   if(MODE.kind==='daily'&&MODE.old){b=0;nb=false} // 7日より前の日の挑戦状：今日の記録にも、あとからにも入れない
   else if(MODE.kind==='daily'&&MODE.late){const d=MODE.day;b=lateBest(d);nb=!b||t<b;if(nb)store.set('xdoko-late-'+d,t.toFixed(1))}
@@ -640,7 +641,7 @@ function finish(){
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
     if(d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
   }else{const key='xdoko-best-'+A.id+(MODE.hard?'-h':'');b=Number(store.get(key)||0);nb=!b||t<b;if(nb){store.set(key,t.toFixed(1));if(SPL.length===ORDER.length)store.set(spKey(),JSON.stringify(SPL))}}
-  bump('clear');
+  if(!isOld)bump('clear');
   // 次へ：ふつうは次の記事。上級は、次の記事を読み切っていればその上級
   const idx=ARTICLES.indexOf(A), nx=A.long?null:ARTICLES[idx+1], next=MODE.kind!=='article'?null:MODE.hard?(nx&&cleared(nx.id)?nx:null):nx;longMark(ORDER.length);
   const md=medal(t,A,MODE.hard), nm=nextMedal(t,A,MODE.hard);
