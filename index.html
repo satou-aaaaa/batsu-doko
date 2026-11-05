@@ -252,6 +252,8 @@ html.a11y-cvd .lv.hard,html.a11y-cvd .lv.long{border-width:3px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 :is(.icon,button,a,[role=button]):focus-visible{outline:3px solid var(--sky)!important;outline-offset:2px}
 </style>
+<!-- 引き継ぎコード（shared-workflows template/transfer.js の写し）。ゲームの script より前に置く -->
+<script src="transfer.js" data-game="batsu-doko" data-keys="xdoko-*"></script>
 <!-- a11y:begin 見やすさの設定 v4（shared-workflows template/a11y/a11y.html の写し。ここでは直さず、ひな形を直して全部のゲームへ写す。drift-check と qa/a11y.mjs が同じ中身か見る） -->
 <style id="a11y-css">
 /* だれでも：キーボードで選んだ所に太い枠（WCAG 2.4.7・2.4.13） */
@@ -897,7 +899,7 @@ function menu(){
    <div class="levels"><button class="lv long" type="button" id="longBtn"${long3?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${long3?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'🔒 記事1〜3を読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
    <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${dexN()}/${Object.keys(TYPES).length}</button>
    <div class="row2"><button class="big btn2" id="achBtn" type="button">🏅 実績 ${achGot().length}/${ACH.length}</button><button class="big btn2" id="calBtn" type="button">📅 カレンダー${(l=>l?`<small>あとから ${l}日</small>`:'')(lateDays().length)}</button></div>
-   <div class="menuopts"><button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px">${soundOn?'🔊 音あり':'🔇 音なし'}</button><button class="icon" id="menuA11y" type="button" data-a11y-open style="width:auto;padding:0 16px">Aa 見やすさ</button></div>
+   <div class="menuopts"><button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px">${soundOn?'🔊 音あり':'🔇 音なし'}</button><button class="icon" id="menuA11y" type="button" data-a11y-open style="width:auto;padding:0 16px">Aa 見やすさ</button><button class="icon" type="button" data-hk style="width:auto;padding:0 16px">🔁 記録の引き継ぎ</button></div>
    ${fbLink('fbMenu')}
    <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
   stage.appendChild(box);
