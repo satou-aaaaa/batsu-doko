@@ -619,7 +619,7 @@ function virus(why,how){
 }
 function shareInfo(t){
   const grid=ORDER.map((_,i)=>used[i]?'💡':'✅').join('');
-  if(MODE.kind==='daily'){const st=MODE.late?0:shownStreak(), lt=MODE.late?'（あとから）':'', dn=MODE.late?`${mdOf(MODE.day)}の1本`:'今日の1本';
+  if(MODE.kind==='daily'){const st=MODE.late||MODE.old?0:shownStreak(), lt=MODE.late?'（あとから）':MODE.old?'（記録に残りません）':'', dn=MODE.late||MODE.old?`${mdOf(MODE.day)}の1本`:'今日の1本';
     return {grid,title:`${dn} #${MODE.day}${MODE.hard?' 上級の日':''}${lt}`,url:`${baseUrl()}?d=${MODE.day}&t=${t.toFixed(1)}`,
       text:`×はどこだ ${dn} #${MODE.day}${MODE.hard?' 上級の日':''}${lt}\n${grid} ${fmt(t)}${st>1?`\n🔥${st}日連続`:''}\n#×はどこだ`}}
   const idx=ARTICLES.indexOf(A), hd=MODE.hard?' 上級':'', md=medal(t,A,MODE.hard), nm=A.long?'ロング':`記事${idx+1}${hd}`;
@@ -628,12 +628,13 @@ function shareInfo(t){
 }
 function finish(){
   // 0時をまたいで読み切った今日の1本は、その日にまだ記録が無ければ「あとから」に入れる（★・連続に数えない）
-  if(MODE.kind==='daily'&&!MODE.late&&MODE.day!==today()&&!dBest(MODE.day))MODE={...MODE,late:true};
+  if(MODE.kind==='daily'&&!MODE.late&&!MODE.old&&MODE.day!==today()&&!dBest(MODE.day))MODE={...MODE,late:true};
   stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
   const had=achGot(), qk=QK.filter(Boolean).length, N=ORDER.length;if(!hints)store.set('xdoko-nohint','1');
   if(qk===N&&!hints)store.set('xdoko-quickall','1');
   let b,nb;
-  if(MODE.kind==='daily'&&MODE.late){const d=MODE.day;b=lateBest(d);nb=!b||t<b;if(nb)store.set('xdoko-late-'+d,t.toFixed(1))}
+  if(MODE.kind==='daily'&&MODE.old){b=0;nb=false} // 7日より前の日の挑戦状：今日の記録にも、あとからにも入れない
+  else if(MODE.kind==='daily'&&MODE.late){const d=MODE.day;b=lateBest(d);nb=!b||t<b;if(nb)store.set('xdoko-late-'+d,t.toFixed(1))}
   else if(MODE.kind==='daily'){const d=MODE.day;b=dBest(d);nb=!b||t<b;
     if(nb)store.set('xdoko-daily-'+d,t.toFixed(1));
     if(d===today()){const s=streak();if(s.last!==d){s.count=s.last===d-1?s.count+1:1;s.last=d;s.max=Math.max(s.max||0,s.count);store.set('xdoko-streak',JSON.stringify(s))}}
@@ -646,8 +647,8 @@ function finish(){
   // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
   let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';if(res==='won')store.set('xdoko-won','1');vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const st=MODE.kind==='daily'&&!MODE.late?shownStreak():0, fresh=ACH.filter(x=>achGot().includes(x[0])&&!had.includes(x[0]));
-  const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p><p class="total" id="quickLine">⚡ 見切り ${qk}/${N}枚${qk===N?'　全部見切った！':''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
+  const st=MODE.kind==='daily'&&!MODE.late&&!MODE.old?shownStreak():0, fresh=ACH.filter(x=>achGot().includes(x[0])&&!had.includes(x[0]));
+  const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${MODE.old?'　（7日より前の日なので記録には残りません）':nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p><p class="total" id="quickLine">⚡ 見切り ${qk}/${N}枚${qk===N?'　全部見切った！':''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
    <div class="btns">${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>
    <p class="sec">結果を送る・挑戦状にする</p>
    <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
@@ -674,7 +675,7 @@ function start(a,mode={kind:'article'}){
   ORDER=pickOrder(cfg());$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const label=mode.kind==='daily'?(mode.late?`${mdOf(mode.day)}の1本（あとから）`:`今日の1本 #${mode.day}${mode.hard?' 上級の日':''}`):a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
+  const label=mode.kind==='daily'?(mode.late?`${mdOf(mode.day)}の1本（あとから）`:mode.old?`#${mode.day}の1本（記録に残りません）`:`今日の1本 #${mode.day}${mode.hard?' 上級の日':''}`):a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
   const b=mode.kind==='daily'?(mode.late?lateBest(mode.day):dBest(mode.day)):mode.hard?bestH(a.id):best(a.id);
   const box=el(`<div class="card"><h3>${label}</h3><p><b>${a.site}</b></p>${mode.rival?`<div class="letter">挑戦状：相手のタイムは <b>${fmt(mode.rival)}</b></div>`:''}<p>最後まで読めばゴール。広告は${cfg().ads}枚。${mode.hard?'<br><b style="color:var(--hot)">上級：難しい広告だけが出る。ヒントは使えない。</b>':''}<br>本物の×だけを押そう。すばやく閉じると ⚡見切り。</p>${mode.kind==='daily'?`<p class="total">${mode.late?`#${mode.day}${mode.hard?' 上級の日':''}・その日と同じ広告の並び。カレンダーに残ります（連続には数えません）`:'今日はだれが遊んでも同じ広告の並び'}</p>`:''}
    <button class="big" id="go" type="button">スタート</button><p class="total">${b?'ベスト '+fmt(b)+' '+medal(b,a,mode.hard):'タイムアタック'}　金は ${fmt(goldOf(a,mode.hard))} 以内</p></div>`);
@@ -798,7 +799,7 @@ function fromLink(){
   const t=Number(q.get('t')), rival=t>0&&t<10000?Math.round(t*10)/10:0;
   const d=Number(q.get('d')), a=byId(q.get('a')), seed=Number(q.get('s'));
   try{if(q.has('d')||q.has('a'))history.replaceState(null,'',location.pathname)}catch(e){}
-  if(Number.isInteger(d)&&d>=1&&d<=today()){start(dailyArt(d),{...dailyMode(d,rival),late:d<today()&&!dBest(d)});return true}
+  if(Number.isInteger(d)&&d>=1&&d<=today()){const lt=d<today()&&!dBest(d), old=lt&&d<today()-7;start(dailyArt(d),{...dailyMode(d,rival),late:lt&&!old,old});return true} // あとからは過去7日まで（lateDays と同じ）。それより前の日の挑戦状は遊べるが記録に残さない
   if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0,hard:q.get('h')==='1'&&!a.long});return true}
   return false;
 }

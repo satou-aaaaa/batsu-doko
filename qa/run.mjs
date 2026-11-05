@@ -629,6 +629,22 @@ if (browser) try {
     check("0時をまたいで読み切った今日の1本は xdoko-late- に入り、xdoko-daily-・連続には入らない", !!r.late && r.daily === null && r.streak === null, JSON.stringify(r));
   }
 
+  // 5l3. 7日より前の日の挑戦状（?d=）は遊べるが、今日の記録にも「あとから」にも入れない（2026-11-05 CodeRabbit）
+  {
+    const p = await open({ unlock: false });
+    const r = await p.evaluate(() => {
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
+      const T = 30; window.__XDOKO_DAY = T; const d = T - 8, k = T - 7; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50");
+      fromLink(); const m1 = { late: MODE.late, old: MODE.old, card: document.querySelector("#stage .card").textContent };
+      running = true; t0 = performance.now() - 20000; finish(); const out = document.querySelector("#stage .card").textContent;
+      history.replaceState(null, "", location.pathname + "?d=" + k + "&t=50"); fromLink(); const m2 = { late: MODE.late, old: MODE.old };
+      const keys = Object.keys(localStorage).filter((x) => /^xdoko-(late|daily)-/.test(x));
+      return { m1, m2, keys, out: out.includes("記録には残りません") };
+    });
+    check("8日前の挑戦状は遊べるが記録に残さず、7日前まではあとから", r.m1.old && !r.m1.late && r.m1.card.includes("記録に残りません") && r.out && r.keys.length === 0 && r.m2.late && !r.m2.old, JSON.stringify(r));
+    await p.close();
+  }
+
   // 5m. 実績の画面：まだのものは「いま/目標」と進み具合のバー。合計の日数（あとからも数える）
   {
     const p = await open({ unlock: false });
