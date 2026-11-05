@@ -37,6 +37,7 @@ node qa/run.mjs 20   # 広告の組み合わせを変えたときは、通しを
 - 押せる所（メニュー・音・ヒントなど、ゲームの外のボタン）は高さ44px以上（Apple HIG。qa が見る）。広告の中の小さな×は遊びなので別。
 - SNS に貼ったときの画像は `og.png`（1200×630）。見た目を変えたら `tools/og.html` を直して `node tools/make-og.mjs` で作り直す。
 - PWA（`manifest.webmanifest`・`sw.js`・`icon-*.png`）：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。sw.js は外へ何も送らない。
+- 引き継ぎコード（別の端末へ記録を移す）：`transfer.js`・`qa/transfer-check.mjs` は shared-workflows の `template/` の写し（ここで直さない。直すときはひな形を直して配り、`引き継ぎの版` を上げる）。`index.html` の script の `data-keys` は記録のキーだけを書く。記録の形を変えたら `qa/run.mjs` の `checkTransfer` の `sample` も合わせる。sw.js の `SHELL` から `./transfer.js` を外さない（shared-workflows `routines/game-dev.md`「引き継ぎコード」）。
 - 記録は遊ぶ人のブラウザ（localStorage）にだけ置き、外へ送らない。公開リポジトリなので、個人情報・鍵を入れない。
 
 ## 公開

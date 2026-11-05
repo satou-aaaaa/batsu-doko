@@ -6,6 +6,7 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import http from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { checkTransfer } from "./transfer-check.mjs";
 import { createHash } from "node:crypto";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -620,11 +621,14 @@ if (browser) try {
       await ctx.setOffline(true); await p.reload();
       check("一度開けば電波が無くても開ける（PWA）", await p.isVisible(".lv"));
       const shell = readFileSync(path.join(root, "sw.js"), "utf8");
-      const files = ["index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
+      const files = ["index.html", "transfer.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
       check("sw.js の SHELL に画面のファイルがそろう", files.every((f) => shell.includes("./" + f) && existsSync(path.join(root, f))));
     } finally { await ctx.close(); server.close(); }
   }
 
+  try { // 引き継ぎコード（別の端末へ記録を移す。shared-workflows template/qa/transfer-check.mjs）
+    await checkTransfer({ browser, url, game: "batsu-doko", sample: { "xdoko-won": "1", "xdoko-best-1": "42.1" }, check });
+  } catch (e) { check("引き継ぎコード", false, e.message.split("\n")[0]); }
   check("ページのエラーが出ない", errors.length === 0, [...new Set(errors)].join(" / "));
 } catch (e) {
   check("検査が最後まで動く", false, e.stack || e.message);

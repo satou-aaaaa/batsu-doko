@@ -194,6 +194,8 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 @keyframes scan{to{background-position:0 4px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+<!-- 引き継ぎコード（shared-workflows template/transfer.js の写し）。ゲームの script より前に置く -->
+<script src="transfer.js" data-game="batsu-doko" data-keys="xdoko-*,a11y-v1"></script>
 </head>
 <body>
 <div id="page">
@@ -648,6 +650,7 @@ function menu(){
    <div class="levels"><button class="lv long" type="button" id="longBtn"${long3?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${long3?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'記事1〜3を読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
    <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${Object.keys(dex()).filter(k=>TYPES[k]).length}/${Object.keys(TYPES).length}・実績 ${achGot().length}/${ACH.length}</button>
    <button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px;margin-top:6px">${soundOn?'🔊 音あり':'🔇 音なし'}</button>
+   <button class="icon" type="button" data-hk style="width:auto;padding:0 16px;margin-top:6px">🔁 記録の引き継ぎ</button>
    ${fbLink('fbMenu')}
    <p class="foot">ホーム画面に追加すると、電波が無くても遊べます</p></div>`);
   stage.appendChild(box);
