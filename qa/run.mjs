@@ -636,8 +636,10 @@ if (browser) try {
     const r = await p.evaluate(() => {
       localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
       const T = 30; window.__XDOKO_DAY = T; const d = T - 8, k = T - 7; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50");
+      localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } }));
       fromLink(); const m1 = { late: MODE.late, old: MODE.old, card: document.querySelector("#stage .card").textContent };
-      running = true; t0 = performance.now() - 20000; finish(); const out = document.querySelector("#stage .card").textContent; const ach1 = { nohint: localStorage.getItem("xdoko-nohint"), quick: localStorage.getItem("xdoko-quickall"), clear: JSON.parse(localStorage.getItem("xdoko-stats")).clear };
+      running = true; t0 = performance.now() - 20000; const all = ORDER.length; for (let i = 0; i < all; i++) { ORDER[n] = "corner"; openAd(true); adT = performance.now() - 400; win(); } // 全部すばやく閉じて（全部見切り・ヒントなし・相手に勝つ）から読み切る
+      const qk = QK.filter(Boolean).length === all; finish(); const out = document.querySelector("#stage .card").textContent; const st1 = JSON.parse(localStorage.getItem("xdoko-stats")); const ach1 = { qk, nohint: localStorage.getItem("xdoko-nohint"), quick: localStorage.getItem("xdoko-quickall"), won: localStorage.getItem("xdoko-won"), clear: st1.clear, closed: st1.closed, dex: JSON.parse(localStorage.getItem("xdoko-dex")).corner.n };
       history.replaceState(null, "", location.pathname + "?d=" + k + "&t=50"); fromLink(); const m2 = { late: MODE.late, old: MODE.old };
       const keys = Object.keys(localStorage).filter((x) => /^xdoko-(late|daily)-/.test(x));
       // 7日前に始め、読み切る前に日付が進んで8日前になった：あとからにも入れない
@@ -652,7 +654,7 @@ if (browser) try {
     check("8日前の挑戦状は遊べるが記録に残さず、7日前まではあとから", r.m1.old && !r.m1.late && r.m1.card.includes("記録に残りません") && r.out && r.keys.length === 0 && r.m2.late && !r.m2.old, JSON.stringify(r));
     check("7日前に始めて8日前になってから読み切っても「あとから」に入れず、8日前の記録も上書きしない（2026-11-05 CodeRabbit）", r.m3 === true && r.k3 === null && r.m4 === true && r.k4 === "99.0", JSON.stringify(r));
     check("記録がある過去の日の挑戦状の結果に「今日の1本」と連続を出さない（2026-11-05 CodeRabbit）", r.sh, JSON.stringify(r));
-    check("8日前の挑戦状は実績（ヒントなし・ぜんぶ見切り）も読み切った数も増やさない（2026-11-05 CodeRabbit）", r.ach1.nohint === null && r.ach1.quick === null && r.ach1.clear === 0, JSON.stringify(r.ach1));
+    check("8日前の挑戦状は全部見切って相手に勝っても、実績（ヒントなし・ぜんぶ見切り・挑戦状に勝つ）・図鑑・閉じた数・読み切った数を増やさない（2026-11-05 CodeRabbit）", r.ach1.qk && r.ach1.nohint === null && r.ach1.quick === null && r.ach1.won === null && r.ach1.clear === 0 && r.ach1.closed === 1 && r.ach1.dex === 1, JSON.stringify(r.ach1));
     await p.close();
   }
 

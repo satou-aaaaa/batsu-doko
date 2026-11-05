@@ -487,6 +487,7 @@ function nextMedal(t,a,h){const g=goldOf(a,h);if(t<=g)return '';const s=t<=g*1.4
 // 図鑑と記録（この端末のブラウザにだけ残す）
 function getJ(k,d){try{return JSON.parse(store.get(k))||d}catch(e){return d}}
 const dex=()=>getJ('xdoko-dex',{}), stats=()=>getJ('xdoko-stats',{clear:0,closed:0,virus:0});
+const oldRun=()=>MODE.kind==='daily'&&(MODE.old||MODE.day<today()-7); // 7日より前の日の挑戦状：遊べるが、図鑑・実績・数のどれにも残さない
 function bump(k){const s=stats();s[k]=(s[k]||0)+1;store.set('xdoko-stats',JSON.stringify(s))}
 // 実績：長く遊ぶための目標。いまの記録から毎回数える（新しく残すのは「ヒントなし」「挑戦状に勝った」「ぜんぶ見切り」だけ）
 // 5つ目は進み具合 [いま, 目標]（まだの実績に「3/7」と出す）
@@ -581,7 +582,7 @@ function win(){
   if(MODE.kind==='practice')return practiceEnd(true,'',sec);
   QK[n]=q;if(q){popUp('⚡ 見切り');tone(1320,.09,'triangle',.08)}
   const c=$('#cnt');c.classList.add('hit');setTimeout(()=>c.classList.remove('hit'),400);
-  SND.close();const ts=Number(now().toFixed(1)),sp=splitTxt(n,ts);SPL[n]=ts;toast(sp?'閉じた　'+sp:'閉じた',sp?1600:900);found(ORDER[n],!!used[n]);bump('closed');
+  SND.close();const ts=Number(now().toFixed(1)),sp=splitTxt(n,ts);SPL[n]=ts;toast(sp?'閉じた　'+sp:'閉じた',sp?1600:900);if(!oldRun()){found(ORDER[n],!!used[n]);bump('closed')}
   if(n===V){$('#p2').hidden=false;$('#nextBtn').hidden=true;page.scrollTop=$('#p2').offsetTop-70}
   n++;stage.className='';stage.innerHTML='';stage.hidden=true;$('#panel').hidden=true;inAd=false;page.classList.remove('lock');check();
 }
@@ -606,7 +607,7 @@ function fail(why,how){
   if(!how)how=inAd&&TYPES[ORDER[n]]?'正しくは：'+TYPES[ORDER[n]].hint:'';
   const left=ORDER.length-n, lg=A&&A.long&&MODE.kind==='article';
   if(lg)longMark(n);
-  stop();bump('virus');SND.virus();virus(why,`${how}<small>${lg?`広告 ${n}/${ORDER.length}枚まで閉じた（ベスト ${longN()}枚）`:`記事の ${pct}% まで読めた（残りの広告 ${left}枚）`}</small>`)}
+  stop();if(!oldRun())bump('virus');SND.virus();virus(why,`${how}<small>${lg?`広告 ${n}/${ORDER.length}枚まで閉じた（ベスト ${longN()}枚）`:`記事の ${pct}% まで読めた（残りの広告 ${left}枚）`}</small>`)}
 let viv=0;
 function virus(why,how){
   const v=$('#virus');v.hidden=false;v.classList.remove('done');$('#vwhy').textContent=why;$('#vhow').innerHTML=how||'';$('#vhow').hidden=!how;
@@ -647,7 +648,7 @@ function finish(){
   const md=medal(t,A,MODE.hard), nm=nextMedal(t,A,MODE.hard);
   const S=shareInfo(t), full=S.text+'\n'+S.url;
   // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
-  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';if(res==='won')store.set('xdoko-won','1');vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
+  let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';if(res==='won'&&!oldRun())store.set('xdoko-won','1');vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const st=MODE.kind==='daily'&&!MODE.late&&!MODE.old&&MODE.day===today()?shownStreak():0, fresh=ACH.filter(x=>achGot().includes(x[0])&&!had.includes(x[0]));
   const box=el(`<div class="card"><h3>読み切った！</h3><p>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${MODE.old?'　（7日より前の日なので記録には残りません）':nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p><p class="total" id="quickLine">⚡ 見切り ${qk}/${N}枚${qk===N?'　全部見切った！':''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
