@@ -272,9 +272,10 @@ if (browser) try {
   {
     // 挑戦状のリンク：開くとその場で挑戦でき、勝ち負けが出る。リンクの印はアドレスから消す
     const p = await open({ unlock: false });
+    await p.addInitScript(() => { window.__XDOKO_DAY = 5; }); // 実行する日に左右されないよう日を決める（#1 が過去7日に入る日。2026-11-05 CodeRabbit）
     await p.goto(url + "?d=1&t=12.3"); await p.waitForTimeout(200);
     const card = await p.textContent("#stage .card"), search = await p.evaluate(() => location.search);
-    check("挑戦状のリンク（?d=1&t=12.3）で開くと、相手のタイムつきで今日の1本 #1 が始められる", card.includes("今日の1本 #1") && card.includes("12.3秒") && (await p.isVisible("#go")), card);
+    check("挑戦状のリンク（?d=1&t=12.3）で開くと、相手のタイムつきで #1 が始められる（過去の日はあとからとして）", card.includes("#1") && card.includes("あとから") && card.includes("12.3秒") && (await p.isVisible("#go")), card);
     check("挑戦状の印はアドレスから消える（読み込み直しでふつうに戻る）", search === "", search);
     await p.click("#go"); const vs = await p.evaluate(() => { t0 = performance.now() - 4000; pen = 0; finish(); return document.querySelector("#stage .card").textContent; });
     check("挑戦状の相手より速ければ「勝ち」が出る", vs.includes("勝ち") && vs.includes("12.3秒"), vs);
@@ -290,7 +291,7 @@ if (browser) try {
     for (const q of ["?d=999999&t=1", "?d=abc", "?a=nope&t=3", "?d=1&t=-5"]) {
       await p.goto(url + q); await p.waitForTimeout(150);
       const txt = await p.textContent("#stage .card");
-      const ok = q === "?d=1&t=-5" ? txt.includes("今日の1本 #1") && !txt.includes("挑戦状") : !!(await p.$("#dailyBtn"));
+      const ok = q === "?d=1&t=-5" ? txt.includes("1本") && txt.includes("#1") && !txt.includes("挑戦状") : !!(await p.$("#dailyBtn"));
       check(`おかしな挑戦状のリンク（${q}）でも壊れない`, ok, txt.slice(0, 40));
     }
     await p.close();
@@ -524,19 +525,19 @@ if (browser) try {
   {
     const p = await open({ unlock: false });
     const a0 = await p.evaluate(() => ({ got: achGot(), n: ACH.length, ids: new Set(ACH.map((x) => x[0])).size }));
-    check("実績は15個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 15 && a0.ids === 15 && a0.got.length === 0, JSON.stringify(a0));
+    check("実績は17個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 17 && a0.ids === 17 && a0.got.length === 0, JSON.stringify(a0));
     await p.click('.lv[data-i="0"]'); await p.click("#go"); await playOn(p, "記事1");
     const r1 = await p.evaluate(() => document.querySelector("#achNew")?.textContent || "");
-    check("はじめて読み切ると、結果に新しい実績（はじめて読み切った・ヒントなし）が出る", r1.includes("はじめて読み切った") && r1.includes("ヒントなし"), r1);
+    check("はじめて読み切ると、結果に新しい実績（はじめて読み切った）が出る。はじめての1枚はヒントが自動で出るので「ヒントなし」は出ない", r1.includes("はじめて読み切った") && !r1.includes("ヒントなし"), r1);
     await p.click("#againRun"); await p.click("#go"); await playOn(p, "記事1");
     check("同じ実績は2回目には出ない", !(await p.evaluate(() => document.querySelector("#achNew")?.textContent || "").then((t) => t.includes("はじめて読み切った"))));
     const st = await p.evaluate(() => { localStorage.setItem("xdoko-streak", JSON.stringify({ last: 1, count: 7, max: 7 })); localStorage.setItem("xdoko-long-n", "12"); return achGot(); });
     check("7日連続・ロング完走などは、今の記録から数える", ["streak3", "streak7", "long6", "long12"].every((k) => st.includes(k)), st.join());
     await p.evaluate(() => menu());
-    check("メニューの図鑑のボタンに、実績の数が出る", (await p.textContent("#dexBtn")).includes("実績 " + st.length + "/15"), await p.textContent("#dexBtn"));
-    await p.click("#dexBtn");
+    check("メニューの実績のボタンに、実績の数が出る", (await p.textContent("#achBtn")).includes("実績 " + st.length + "/17"), await p.textContent("#achBtn"));
+    await p.click("#achBtn");
     const dv = await p.evaluate(() => ({ got: document.querySelectorAll(".ach > div:not(.no)").length, no: document.querySelectorAll(".ach > .no").length, txt: document.querySelector(".ach").textContent }));
-    check("図鑑の画面に実績の一覧があり、まだのものも条件が見える", dv.got === st.length && dv.no === 15 - st.length && dv.txt.includes("上級で金メダル"), JSON.stringify(dv).slice(0, 200));
+    check("実績の画面に一覧があり、まだのものも条件が見える", dv.got === st.length && dv.no === 17 - st.length && dv.txt.includes("上級で金メダル"), JSON.stringify(dv).slice(0, 200));
     await p.goto(url + "?a=recipe&t=999&s=5"); await p.waitForTimeout(200); await p.click("#go"); await playOn(p, "挑戦状");
     check("挑戦状の相手に勝つと、実績「挑戦状に勝つ」が取れる", await p.evaluate(() => achGot().includes("rival")));
     await p.close();
@@ -554,7 +555,10 @@ if (browser) try {
     check("上級の日も、同じ日ならだれでも同じ並び", sameH === 1, sameH);
     await p.addInitScript(() => { window.__XDOKO_DAY = 10; });
     await p.goto(url + "?d=6&t=50"); await p.waitForTimeout(200);
-    check("上級の日の挑戦状のリンクを開くと、上級の日で始まる", (await p.textContent("#stage .card")).includes("今日の1本 #6 上級の日"));
+    const h6 = await p.evaluate(() => ({ hard: !!MODE.hard, late: !!MODE.late, day: MODE.day }));
+    check("上級の日の挑戦状のリンク（過去の日）を開くと、上級のまま「あとから」で始まる", h6.hard && h6.late && h6.day === 6, JSON.stringify(h6));
+    await p.evaluate(() => { localStorage.setItem("xdoko-daily-6", "40.0"); }); await p.goto(url + "?d=6&t=50"); await p.waitForTimeout(200);
+    check("その日をもう読み切っていれば、過去の日の挑戦状はあとからにしない（記録は今日の1本のほう）", await p.evaluate(() => MODE.day === 6 && !MODE.late));
     await p.close();
   }
 
@@ -584,6 +588,268 @@ if (browser) try {
     await solve(p); await p.waitForTimeout(60);
     for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
     check("2枚目からは、ヒントは押したときだけ出る", await p.evaluate(() => document.querySelector("#hintTxt").hidden));
+    await p.close();
+  }
+
+  // 5l. 見切り：出てすぐ（待つ広告は閉じられるようになってから）閉じると ⚡見切り。ヒントを見た広告は数えない
+  {
+    const p = await open({ unlock: false });
+    const q = await p.evaluate(() => {
+      const lim = Object.keys(TYPES).map((k) => [k, quickLim(k), TYPES[k].lv]);
+      // はじめての1枚はヒントが自動で出る＝ヒントを見た広告なので、見切りに数えない
+      localStorage.clear(); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
+      ORDER[n] = "corner"; openAd(true); adT = performance.now() - 300; win(); const firstAuto = QK[0], autoHints = hints;
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 })); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
+      const close = (type, ago, hint) => { ORDER[n] = type; openAd(true); adT = performance.now() - ago * 1000; if (hint) { $("#hintBtn").click(); } win(); };
+      close("corner", 1.0); const pop = document.querySelector("#pop").classList.contains("on") && document.querySelector("#pop").textContent;
+      close("corner", 3.0); close("countdown", 7.5); close("corner", 0.5, true);
+      const qk = QK.slice(); finish();
+      const line = document.querySelector("#quickLine")?.textContent || "", all1 = localStorage.getItem("xdoko-quickall");
+      start(ARTICLES[0]); running = true; t0 = performance.now() - 15000; for (let i = 0; i < 4; i++) close("corner", 0.4); finish();
+      return { firstAuto, autoHints, lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
+    });
+    check("見切りの目安は★1が2.5秒・★2が3秒・★3が3.5秒、待つ広告（待たされる×・動画）は待つ5秒を足す", q.lim.every(([k, v, lv]) => v === ({ 1: 2.5, 2: 3, 3: 3.5 })[lv] + (["countdown", "video"].includes(k) ? 5 : 0)), JSON.stringify(q.lim));
+    check("すばやく閉じると ⚡見切り が一瞬出て、おそい・ヒントを見た広告は見切りにならない（待つ広告は出てからの時間を、待ちの5秒を足した目安と比べる）", q.pop === "⚡ 見切り" && q.qk.join() === "true,false,true,false", JSON.stringify({ pop: q.pop, qk: q.qk }));
+    check("はじめての1枚（ヒントが自動で出る）は、すばやく閉じても見切りに数えない", q.firstAuto === false, String(q.firstAuto));
+    check("はじめての1枚の自動のヒントもヒントの回数に数える（「ヒントなしで読み切る」の実績にしない）", q.autoHints === 1, String(q.autoHints));
+    check("結果に「⚡ 見切り 2/4枚」が出て、全部でなければ実績の印は残さない", q.line.includes("⚡ 見切り 2/4枚") && !q.line.includes("全部") && q.all1 === null, JSON.stringify(q));
+    check("全部見切ると「全部見切った！」と実績「ぜんぶ見切り」が取れ、結果に出る", q.line2.includes("4/4枚") && q.line2.includes("全部見切った") && q.all2 === "1" && q.got && q.ach.includes("ぜんぶ見切り"), JSON.stringify(q).slice(0, 300));
+    await p.waitForTimeout(800);
+    check("見切りの知らせは少しで消える（押す所をふさがない）", await p.evaluate(() => !document.querySelector("#pop").classList.contains("on") && getComputedStyle(document.querySelector("#pop")).pointerEvents === "none"));
+    const pr = await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } })); practice("corner"); adT = performance.now() - 1200; win(); const a = document.querySelector("#prTime")?.textContent || ""; practice("corner"); adT = performance.now() - 6000; win(); const b = document.querySelector("#prTime")?.textContent || ""; return { a, b, st: localStorage.getItem("xdoko-stats") }; });
+    check("練習で閉じると、閉じるまでの秒数と見切りの目安が出る（記録は増えない）", pr.a.includes("閉じるまで 1.2秒") && pr.a.includes("見切り！") && pr.b.includes("見切りは 2.5秒 以内") && pr.st === null, JSON.stringify(pr));
+    await p.close();
+  }
+  // 5l2. 0時をまたいで読み切った今日の1本は、その日に記録が無ければ「あとから」に入れる（★・連続に数えない）
+  {
+    const p = await open({ unlock: false });
+    const r = await p.evaluate(() => {
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
+      const d = today(); window.__XDOKO_DAY = d; start(dailyArt(d), dailyMode(d)); running = true; t0 = performance.now() - 20000; window.__XDOKO_DAY = d + 1; finish(); delete window.__XDOKO_DAY; // 今日で始め、読み切る前に日付だけ進める
+      return { late: localStorage.getItem("xdoko-late-" + d), daily: localStorage.getItem("xdoko-daily-" + d), streak: localStorage.getItem("xdoko-streak") };
+    });
+    check("0時をまたいで読み切った今日の1本は xdoko-late- に入り、xdoko-daily-・連続には入らない", !!r.late && r.daily === null && r.streak === null, JSON.stringify(r));
+  }
+
+  // 5l3. 7日より前の日の挑戦状（?d=）は遊べるが、今日の記録にも「あとから」にも入れない（2026-11-05 CodeRabbit）
+  {
+    const p = await open({ unlock: false });
+    const r = await p.evaluate(() => {
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
+      const T = 30; window.__XDOKO_DAY = T; const d = T - 8, k = T - 7; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50");
+      localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } }));
+      fromLink(); const m1 = { late: MODE.late, old: MODE.old, card: document.querySelector("#stage .card").textContent };
+      running = true; t0 = performance.now() - 20000; const all = ORDER.length; for (let i = 0; i < all; i++) { ORDER[n] = "corner"; openAd(true); adT = performance.now() - 400; win(); } // 全部すばやく閉じて（全部見切り・ヒントなし・相手に勝つ）から読み切る
+      const qk = QK.filter(Boolean).length === all; finish(); const out = document.querySelector("#stage .card").textContent; const st1 = JSON.parse(localStorage.getItem("xdoko-stats")); const ach1 = { qk, nohint: localStorage.getItem("xdoko-nohint"), quick: localStorage.getItem("xdoko-quickall"), won: localStorage.getItem("xdoko-won"), clear: st1.clear, closed: st1.closed, dex: JSON.parse(localStorage.getItem("xdoko-dex")).corner.n };
+      // 8日前の挑戦状で押してはいけない所を押しても、感染の数を増やさない
+      const v0 = JSON.parse(localStorage.getItem("xdoko-stats")).virus; history.replaceState(null, "", location.pathname + "?d=" + d + "&t=50"); fromLink(); const mOld = MODE.old; running = true; const vz = virus; virus = () => {}; try { fail("qa"); } finally { virus = vz; } // 感染の画面はこの検査のページに無い部品を使うので一時的に止め、ほかの例外はそのまま失敗にする
+      ach1.virusOld = mOld && JSON.parse(localStorage.getItem("xdoko-stats")).virus === v0;
+      history.replaceState(null, "", location.pathname + "?d=" + k + "&t=50"); fromLink(); const m2 = { late: MODE.late, old: MODE.old };
+      const keys = Object.keys(localStorage).filter((x) => /^xdoko-(late|daily)-/.test(x));
+      // 7日前に始め、読み切る前に日付が進んで8日前になった：あとからにも入れない
+      window.__XDOKO_DAY = T; history.replaceState(null, "", location.pathname + "?d=" + k); fromLink(); const m3 = MODE.late; window.__XDOKO_DAY = T + 1; running = true; t0 = performance.now() - 20000; finish(); const k3 = localStorage.getItem("xdoko-late-" + k);
+      // 8日前で記録がある日も上書きしない
+      localStorage.setItem("xdoko-daily-" + d, "99.0"); window.__XDOKO_DAY = T; history.replaceState(null, "", location.pathname + "?d=" + d); fromLink(); const m4 = MODE.old; running = true; t0 = performance.now() - 20000; finish(); const k4 = localStorage.getItem("xdoko-daily-" + d);
+      // 記録がある過去の日（7日以内）の結果に「今日の1本」と連続を出さない
+      localStorage.setItem("xdoko-daily-" + (T - 2), "99.0"); localStorage.setItem("xdoko-streak", JSON.stringify({ count: 5, last: T, max: 5 })); history.replaceState(null, "", location.pathname + "?d=" + (T - 2)); fromLink(); running = true; t0 = performance.now() - 20000; finish(); const sh = document.querySelector("#shareTxt").textContent;
+      delete window.__XDOKO_DAY;
+      return { m1, m2, keys, ach1, out: out.includes("記録には残りません"), m3, k3, m4, k4, sh: !sh.includes("今日の1本") && !sh.includes("連続") };
+    });
+    check("8日前の挑戦状は遊べるが記録に残さず、7日前まではあとから", r.m1.old && !r.m1.late && r.m1.card.includes("記録に残りません") && r.out && r.keys.length === 0 && r.m2.late && !r.m2.old, JSON.stringify(r));
+    check("7日前に始めて8日前になってから読み切っても「あとから」に入れず、8日前の記録も上書きしない（2026-11-05 CodeRabbit）", r.m3 === true && r.k3 === null && r.m4 === true && r.k4 === "99.0", JSON.stringify(r));
+    check("記録がある過去の日の挑戦状の結果に「今日の1本」と連続を出さない（2026-11-05 CodeRabbit）", r.sh, JSON.stringify(r));
+    check("8日前の挑戦状は全部見切って相手に勝っても、実績（ヒントなし・ぜんぶ見切り・挑戦状に勝つ）・図鑑・閉じた数・読み切った数・感染の数を増やさない（2026-11-05 CodeRabbit）", r.ach1.qk && r.ach1.nohint === null && r.ach1.quick === null && r.ach1.won === null && r.ach1.clear === 0 && r.ach1.closed === 1 && r.ach1.dex === 1 && r.ach1.virusOld === true, JSON.stringify(r.ach1));
+    await p.close();
+  }
+
+  // 5m. 実績の画面：まだのものは「いま/目標」と進み具合のバー。合計の日数（あとからも数える）
+  {
+    const p = await open({ unlock: false });
+    const a = await p.evaluate(() => {
+      localStorage.clear(); window.__XDOKO_DAY = 20;
+      [3, 5, 9].forEach((d) => localStorage.setItem("xdoko-daily-" + d, "30.0")); localStorage.setItem("xdoko-late-15", "40.0");
+      localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 4, closed: 40, virus: 0 }));
+      const n4 = playedDays(), g4 = achGot().includes("days7");
+      [11, 12, 13].forEach((d) => localStorage.setItem("xdoko-late-" + d, "40.0"));
+      const n7 = playedDays(), g7 = achGot().includes("days7");
+      [11, 12, 13].forEach((d) => localStorage.removeItem("xdoko-late-" + d)); menu(); document.querySelector("#achBtn").click();
+      const row = (id) => document.querySelector(`[data-ach="${id}"]`);
+      return { n4, g4, n7, g7, days: row("days7").textContent, closed: row("closed100").textContent, bar: row("closed100").querySelector(".bar u").style.width, first: row("first").textContent, firstNo: row("first").classList.contains("no") };
+    });
+    check("読み切った日の合計は、今日の1本とあとからの両方を数え、7日で実績「7日読んだ」", a.n4 === 4 && !a.g4 && a.n7 === 7 && a.g7, JSON.stringify(a));
+    check("まだの実績は「いま/目標」とバーで進み具合が出る（4/7・40/100）、取れた実績には ✓", a.days.includes("4/7") && a.closed.includes("40/100") && a.bar === "40%" && !a.firstNo && a.first.includes("✓"), JSON.stringify(a));
+    await p.click("#achBack"); check("実績の画面からメニューへ戻れる", !!(await p.$("#dailyBtn")));
+    await p.close();
+  }
+
+  // 5n. カレンダーと、取りこぼした日をあとから遊ぶ
+  // 日をずらす数は環境変数で変えられる（QA_CAL_TODAY=今日の番号・QA_LATE_BACK=何日前を遊ぶか）。月をまたぐ組（#30＝12月2日から4日前）も毎回通す
+  {
+    const CAL_T = Number(process.env.QA_CAL_TODAY || 20), LATE_BACK = Number(process.env.QA_LATE_BACK || 3);
+    const p = await open({ unlock: false });
+    // 何百日ぶんも：取りこぼした日の一覧は、過去7日・#1以降・まだ読んでいない日だけ
+    const ld = await p.evaluate(() => {
+      const bad = []; localStorage.clear();
+      for (let d = 1; d <= 400; d++) { if (d % 3 === 0) localStorage.setItem("xdoko-daily-" + d, "30.0"); if (d % 5 === 0) localStorage.setItem("xdoko-late-" + d, "30.0"); }
+      for (let t = 1; t <= 400; t++) {
+        const got = lateDays(t), want = []; for (let d = t - 1; d >= Math.max(1, t - 7); d--) if (d % 3 && d % 5) want.push(d);
+        if (got.join() !== want.join()) bad.push(t);
+      }
+      localStorage.clear(); return bad;
+    });
+    check("取りこぼした日の一覧を400日ぶん作って、どれも過去7日・#1以降・まだ読んでいない日だけ", ld.length === 0, ld.slice(0, 5).join(","));
+    // あとからの問題は、その日の今日の1本と同じ（300日ぶん）
+    const same = await p.evaluate(() => {
+      const bad = [];
+      for (let d = 1; d <= 300; d++) {
+        start(dailyArt(d), dailyMode(d)); const a = [ORDER.join(), $("#art").innerHTML, MODE.hard];
+        start(dailyArt(d), { ...dailyMode(d), late: true }); const b = [ORDER.join(), $("#art").innerHTML, MODE.hard];
+        if (a.join("|") !== b.join("|")) bad.push(d);
+      }
+      menu(); return bad;
+    });
+    check("あとから遊ぶ1本は、300日ぶんどれもその日の今日の1本と同じ広告の並び・置き場所・上級の日", same.length === 0, same.slice(0, 5).join(","));
+    // 結果：今日の記録・連続・Ko-fi に数えない。記録は xdoko-late-<日> に分けて残る
+    const lr = await p.evaluate(() => {
+      localStorage.clear(); window.__XDOKO_DAY = 20; const sk = JSON.stringify({ last: 19, count: 2, max: 2 }); localStorage.setItem("xdoko-streak", sk);
+      start(dailyArt(15), { ...dailyMode(15), late: true }); const card = document.querySelector("#stage .card").textContent;
+      running = true; t0 = performance.now() - 30000; finish();
+      const r = { card, daily: localStorage.getItem("xdoko-daily-15"), late: localStorage.getItem("xdoko-late-15"), sk: localStorage.getItem("xdoko-streak") === sk, kofi: !!document.querySelector("#kofi"), txt: document.querySelector("#shareTxt").textContent, res: document.querySelector("#stage .card").textContent };
+      menu(); r.menu = document.querySelector("#dailyBtn").textContent; return r;
+    });
+    check("あとからの始めのカードに「あとから」と日付・連続に数えないことが出る", lr.card.includes("11月17日の1本（あとから）") && lr.card.includes("#15") && lr.card.includes("連続には数えません"), lr.card);
+    check("あとから読み切っても、今日の記録・連続は増えず、記録は別（xdoko-late）に残る", lr.daily === null && Number(lr.late) > 0 && lr.sk, JSON.stringify(lr).slice(0, 200));
+    check("あとからの結果に Ko-fi のひとこと・連続は出ず、共有の文は「（あとから）」で連続を入れない", !lr.kofi && lr.txt.includes("（あとから）") && !lr.txt.includes("連続") && !lr.res.includes("連続"), lr.txt);
+    check("あとから読んでも、メニューの今日の1本は遊ぶ前のまま", lr.menu.includes("遊ぶ") && lr.menu.includes("🔥2日連続"), lr.menu);
+    // カレンダー：印・前の月・連続の言葉（1以上だけ）・責める言葉を書かない
+    const cal = async (setup) => p.evaluate((setup) => { localStorage.clear(); window.__XDOKO_DAY = setup.t; for (const [k, v] of Object.entries(setup.ls || {})) localStorage.setItem(k, v); menu(); document.querySelector("#calBtn").click(); return document.querySelector("#stage .card").textContent; }, setup);
+    const openTo = async (d) => { for (let k = 0; k < 24 && !(await p.$(`.cal [data-d="${d}"]`)); k++) { if (await p.isDisabled("#calPrev")) break; await p.click("#calPrev"); } return p.$(`.cal [data-d="${d}"]`); };
+    const t1 = await cal({ t: 20, ls: { "xdoko-daily-18": "30.0", "xdoko-daily-10": "30.0", "xdoko-late-15": "40.0", "xdoko-streak": JSON.stringify({ last: 18, count: 1, max: 1 }) } });
+    const marks = await p.evaluate(() => { const c = (d) => document.querySelector(`.cal [data-d="${d}"]`); return { pl: c(18).className, pl2: c(10).className, late: c(15).className, miss: [...document.querySelectorAll(".cal .miss")].map((b) => +b.dataset.d).sort((a, b) => a - b).join(), td: document.querySelector(".cal .td")?.textContent, month: document.querySelector("#calMonth").textContent, menuSmall: "" }; });
+    check("カレンダー：今日の1本の日は ★（濃い色）、あとからの日は ↺（薄い色）、今日に枠", marks.pl.includes("pl") && marks.pl2.includes("pl") && marks.late.includes("late") && marks.month === "2026年11月" && marks.td?.startsWith("22"), JSON.stringify(marks));
+    check("カレンダー：過去7日のまだの日だけ押せる（#13・14・16・17・19）", marks.miss === "13,14,16,17,19", marks.miss);
+    check("カレンダー：連続は1以上のときだけ出し、0のときは出さない・休んだ日を責める言葉は書かない", !t1.includes("連続") && t1.includes("合わせて 3日") && !/(休|サボ|途切|さぼ|残念|忘れ)/.test(t1), t1);
+    const t2 = await cal({ t: 20, ls: { "xdoko-daily-19": "30.0", "xdoko-streak": JSON.stringify({ last: 19, count: 1, max: 1 }) } });
+    check("カレンダー：連続が1日でも小さく出る", t2.includes("🔥 1日連続"), t2.slice(-80));
+    const mb = await p.evaluate(() => { window.__XDOKO_DAY = 20; localStorage.clear(); menu(); return document.querySelector("#calBtn").textContent; });
+    check("メニューのカレンダーのボタンに、あとから読める日数が出る", mb.includes("あとから 7日"), mb);
+    // 月をまたぐ：12月から前の月へ戻って押す。#1 の月より前には戻れない
+    for (const [T, back] of [[CAL_T, LATE_BACK], [30, 4]]) {
+      await cal({ t: T, ls: {} });
+      const d = T - back, cell = await openTo(d);
+      const ok = !!cell && (await cell.evaluate((e) => e.matches("button.miss")));
+      if (ok) await cell.click();
+      const card = ok ? await p.textContent("#stage .card") : "";
+      const m = await p.evaluate(() => ({ late: !!MODE.late, day: MODE.day }));
+      check(`カレンダーの日（今日 #${T} の ${back}日前）を、その月まで戻って押すと、あとから始まる`, ok && card.includes("あとから") && m.late && m.day === d, JSON.stringify({ ok, m, card: card.slice(0, 40) }));
+    }
+    await cal({ t: 30, ls: {} });
+    const nav = await p.evaluate(() => { const a = [document.querySelector("#calMonth").textContent, document.querySelector("#calPrev").disabled, document.querySelector("#calNext").disabled]; document.querySelector("#calPrev").click(); return a.concat([document.querySelector("#calMonth").textContent, document.querySelector("#calPrev").disabled, document.querySelector("#calNext").disabled]); });
+    check("カレンダー：前の月へ戻れて、#1（2026年11月）より前・今月より先へは行けない", nav.join() === "2026年12月,false,true,2026年11月,true,false", nav.join());
+    // 古いタブ：もう読み切った日を押しても始めない
+    const stale = await p.evaluate(() => { localStorage.clear(); window.__XDOKO_DAY = 20; menu(); document.querySelector("#calBtn").click(); localStorage.setItem("xdoko-daily-17", "30.0"); document.querySelector('.cal [data-d="17"]').click(); return { cal: !!document.querySelector("#cal"), late: !!MODE.late, say: document.querySelector("#say").textContent }; });
+    check("古いタブで、もう読み切った日を押しても始めず、知らせてカレンダーに戻る", stale.cal && !stale.late && stale.say.includes("もう読み切って"), JSON.stringify(stale));
+    // スマホ幅 320px：実績・カレンダーが横にはみ出さない・押せる所は44px以上・キーで選ぶと枠が見える
+    await p.setViewportSize({ width: 320, height: 640 });
+    const fit = [];
+    for (const scr of ["showAch()", "showCal()", "menu()"]) {
+      await p.evaluate((scr) => { window.__XDOKO_DAY = 20; localStorage.clear(); localStorage.setItem("xdoko-daily-18", "30.0"); eval(scr); }, scr);
+      await p.waitForTimeout(400); // 出てくるときの動き（少し小さく出る）が終わってから測る
+      const r = await p.evaluate(() => {
+        const card = document.querySelector("#stage .card").getBoundingClientRect(), btns = [...document.querySelectorAll("#stage button")].filter((b) => b.offsetParent).map((b) => [b.id || b.className, Math.round(b.getBoundingClientRect().height)]);
+        return { sw: document.documentElement.scrollWidth, sw2: document.querySelector("#stage").scrollWidth, right: card.right, small: btns.filter(([, h]) => h < 44) }; });
+      fit.push([scr, r]);
+    }
+    check("幅320pxで、実績・カレンダー・メニューが横にはみ出さず、押せる所は高さ44px以上", fit.every(([, r]) => r.sw <= 320 && r.sw2 <= 320 && r.right <= 320 && r.small.length === 0), JSON.stringify(fit));
+    await p.evaluate(() => showCal()); await p.keyboard.press("Tab");
+    const fv = await p.evaluate(() => [...document.querySelectorAll("#stage button:not([disabled]), #stage a")].map((b) => { b.focus(); const cs = getComputedStyle(b); return [b.id || b.className, b.matches(":focus-visible"), parseFloat(cs.outlineWidth), cs.outlineStyle]; }));
+    check("カレンダーの押せる所は、キーで選ぶと2px以上の枠が見える", fv.length > 0 && fv.every(([, v, w, s]) => v && w >= 2 && s !== "none"), JSON.stringify(fv));
+    await p.evaluate(() => { delete window.__XDOKO_DAY; });
+    await p.close();
+  }
+
+  // 5o. とことん：記事が次々に出て、先ほど広告が強くなる。🎫3枚（まちがい・ヒントで1枚）、降りる・自己ベスト・続きから
+  {
+    const src = readFileSync(path.join(root, "index.html"), "utf8");
+    const nRand = (src.match(/Math\.random/g) || []).length;
+    check("乱数（ふだんの乱数）を使う所は、ふつうの記事・感染の画面・とことんの6か所だけ（今日の1本・挑戦状は日の番号の乱数）", nRand === 6, nRand);
+    const p = await open({ unlock: false });
+    const lists = await p.evaluate(() => {
+      const bad = []; const firsts = new Set();
+      for (let r = 0; r < 300; r++) {
+        R = Math.random; const L = endlessList(); firsts.add(L.map((x) => x.id).join());
+        if (L.length !== 30) bad.push("長さ" + L.length);
+        L.forEach((x, i) => {
+          if (i && L[i - 1].id === x.id) bad.push("続けて同じ記事" + i);
+          if (i && (x.lv < L[i - 1].lv || (L[i - 1].hard && !x.hard))) bad.push("難しさが下がる" + i);
+          const c = ecfgOf(x), o = pickOrder(c);
+          if (o.length !== c.ads || new Set(o).size !== o.length) bad.push("広告の数・重なり" + x.id);
+          if (x.hard ? o.some((t) => TYPES[t].lv < 2) : o.some((t) => TYPES[t].lv > c.lv)) bad.push("段の外の広告" + x.id);
+        });
+        if (L[0].lv !== 1 || ecfgOf(L[0]).lv !== 1 || L[0].hard || !L.slice(4).every((x) => x.hard)) bad.push("段の並び");
+      }
+      return { bad: bad.slice(0, 5), uniq: firsts.size };
+    });
+    check("とことんの並びを300回作って、続けて同じ記事が出ず、難しさは下がらない（★1→★2→★3→難しい広告だけ）", lists.bad.length === 0, lists.bad.join(" / "));
+    check("とことんの並びは毎回ちがう", lists.uniq >= 290, lists.uniq);
+    // 関所：とことんの段で何百回作り直しても、ふさぐ広告の間は0.75画面以上
+    const eg = await p.evaluate(() => { let min = 1e9, wrong = 0; for (let r = 0; r < 200; r++) { R = Math.random; const x = endlessList()[r % 30]; A = byId(x.id); MODE = { kind: "endless", cfg: ecfgOf(x) }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
+      const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((g) => g.getBoundingClientRect().top - top);
+      if (ys.length !== MODE.cfg.ads - (MODE.cfg.vignette ? 1 : 0)) wrong++; ys.forEach((y, k) => { min = Math.min(min, k ? y - ys[k - 1] : y); }); }
+      MODE = { kind: "article" }; return { min, wrong }; });
+    check("とことんの記事を200回組み直して、広告の間はいつも0.75画面以上・関所の数がそろう", eg.min >= H * 0.75 && eg.wrong === 0, JSON.stringify(eg));
+    await p.evaluate(() => { localStorage.clear(); menu(); });
+    const hb = await p.evaluate(() => { const b = document.querySelector("#go-e"); return b ? { t: b.textContent, h: b.offsetHeight } : null; });
+    check("ホームに大きな「とことん」のボタン（44px以上）", hb && hb.t.includes("とことん") && hb.h >= 44, JSON.stringify(hb));
+    await p.click("#go-e");
+    check("とことんの1本目は★1の記事で、降りるボタンがある", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.tk === 3 && ORDER.every((t) => TYPES[t].lv === 1)) && await p.isVisible("#eStop"));
+    await p.click("#go");
+    check("遊ぶあいだ「ここで降りる」が出る（44px以上）", await p.isVisible("#eQuit") && (await p.locator("#eQuit").boundingBox()).height >= 44);
+    const n1 = await p.evaluate(() => ORDER.length);
+    await playOn(p, "とことん1本目");
+    const s1 = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem("xdoko-erun")); return { i: r.i, c: r.c, tk: r.tk, d: Object.keys(localStorage).filter((k) => /^xdoko-(daily|late|best|split)-|xdoko-streak/.test(k)).length }; });
+    check("1本読み切ると次の記事へ進み、閉じた数が残る（今日の記録・ベスト・連続には入らない）", s1.i === 1 && s1.c === n1 && s1.tk === 3 && s1.d === 0, JSON.stringify(s1));
+    await p.click("#eNextBtn"); await p.click("#go");
+    check("2本目は★2まで（★2を1枚は入れる）", await p.evaluate(() => ORDER.some((t) => TYPES[t].lv === 2) && ORDER.every((t) => TYPES[t].lv <= 2)));
+    // 記事の中の広告を押す（まちがい）→ 🎫が減るだけで、感染しない
+    const miss = async () => { await p.evaluate(() => { const x = document.querySelector("#art .inad"); x.click(); }); await p.waitForTimeout(50); };
+    await miss();
+    check("まちがえると🎫が1枚減り、感染の画面は出ない", await p.evaluate(() => E.tk === 2 && JSON.parse(localStorage.getItem("xdoko-erun")).tk === 2) && !(await p.isVisible("#virus")));
+    // 続きから：開き直すと、その記事の始めから。閉じた数は記事の始めに戻り、🎫は戻らない
+    await p.reload(); await p.waitForTimeout(200);
+    const lbl = await p.textContent("#go-e");
+    check("ホームのボタンに「つづきから」が出る", lbl.includes("つづきから"), lbl);
+    await p.click("#go-e");
+    const rs = await p.evaluate(() => ({ i: E.i, c: E.c, tk: E.tk }));
+    check("続きから：2本目・閉じた数は1本目の終わり・🎫は2枚のまま", rs.i === 1 && rs.c === n1 && rs.tk === 2, JSON.stringify(rs));
+    await p.click("#go");
+    await miss(); await miss();
+    // 🎫0：ヒントは押せない
+    for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
+    const hd = await p.evaluate(() => { const b = document.querySelector("#hintBtn"); return { dis: b.disabled, t: b.textContent }; });
+    check("🎫が0だとヒントは押せない", hd.dis && hd.t.includes("ありません"), JSON.stringify(hd));
+    const cNow = await p.evaluate(() => E.c);
+    await p.evaluate(() => { const f = document.querySelector("#stage .fake,#stage .big,#stage .buy"); f.click(); });
+    await p.waitForTimeout(100);
+    const ov = await p.evaluate(() => ({ v: !document.querySelector("#virus").hidden, line: (document.querySelector("#eOverLine") || {}).textContent || "", best: localStorage.getItem("xdoko-ebest"), run: !!eRun() }));
+    check("🎫0でまちがえると感染の画面でおしまい。自己ベストが残り、続きは消える", ov.v && ov.line.includes(`${cNow}枚`) && ov.best === String(cNow) && !ov.run, JSON.stringify(ov));
+    await p.evaluate(() => document.querySelector("#againBtn").click());
+    check("感染の画面の「もう一度」で、とことんを1本目から", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.c === 0 && E.tk === 3));
+    // 降りる：自己ベストを下げない
+    await p.evaluate(() => localStorage.setItem("xdoko-ebest", "99"));
+    await p.click("#eStop");
+    const en = await p.evaluate(() => ({ num: document.querySelector("#eNum").textContent, line: document.querySelector("#eBestLine").textContent, best: localStorage.getItem("xdoko-ebest"), again: !!document.querySelector("#eAgain") && document.querySelector("#eAgain").offsetHeight >= 44 }));
+    check("降りると終わりの画面（閉じた数・自己ベストとの差・もう一度とことん）。ベストは下げない", en.num.includes("0枚") && en.line.includes("あと 100枚") && en.best === "99" && en.again, JSON.stringify(en));
+    // 降りて自己ベスト更新
+    await p.evaluate(() => { localStorage.setItem("xdoko-ebest", "0"); startEndless(true); E.c = 3; eEnd(false); });
+    check("ベストより多く閉じて降りると「🎉 自己ベスト更新！」", (await p.textContent("#eBestLine")).includes("自己ベスト更新") && await p.evaluate(() => localStorage.getItem("xdoko-ebest")) === "3");
+    // 今日の1本の結果に「続けて遊ぶ：とことん」
+    await p.evaluate(() => { window.__XDOKO_DAY = 1; start(dailyArt(1), dailyMode(1)); });
+    await p.click("#go"); await playOn(p, "今日の1本 #1");
+    const gd = await p.evaluate(() => { const b = document.querySelector("#stage #go-e"); return b ? b.textContent : ""; });
+    check("今日の1本の結果に「続けて遊ぶ：とことん（ベスト n枚）」", gd.includes("続けて遊ぶ：とことん") && gd.includes("3枚"), gd);
+    await p.click("#stage #go-e");
+    check("結果のボタンでとことんが始まる", await p.evaluate(() => MODE.kind === "endless"));
     await p.close();
   }
 
