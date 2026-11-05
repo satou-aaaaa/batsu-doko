@@ -459,6 +459,10 @@ if (browser) try {
     await play(p, 0);
     const r = await look("fbRes");
     check("結果の画面にも「感想を送る」がある", r && r.href === FB && r.target === "_blank" && r.h >= 44, JSON.stringify(r));
+    // 点滅は「見える・消える」の2つだけにする（steps(2) だと途中で半分の濃さになり、コントラストの検査が時刻しだいで落ちた。2026-11-05）
+    const src = readFileSync(path.join(root, "index.html"), "utf8");
+    const halfBlink = [...src.matchAll(/animation:\s*blink[^;}]*/g)].map((x) => x[0]).filter((a) => !/step-end|step-start/.test(a));
+    check("点滅（blink）は step-end で、半分の濃さの時が無い", halfBlink.length === 0, halfBlink.join(" / "));
     const yml = readFileSync(path.join(root, ".github/ISSUE_TEMPLATE/feedback.yml"), "utf8");
     check("感想フォームの name が3字以上（「感想」の2字だと GitHub がフォームを出さず白紙の Issue になる。shared-workflows incidents/2026-11-05-feedback-form-not-shown.md）", [...((yml.match(/^name:\s*(.+)$/m) || [])[1] || "").trim()].length >= 3 && /^description:\s*\S/m.test(yml), (yml.match(/^name:.*$/m) || [""])[0]);
     const ids = [...yml.matchAll(/^\s+id: (\S+)/gm)].map((x) => x[1]);
