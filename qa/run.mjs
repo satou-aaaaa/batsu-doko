@@ -458,6 +458,7 @@ if (browser) try {
     const r = await look("fbRes");
     check("結果の画面にも「感想を送る」がある", r && r.href === FB && r.target === "_blank" && r.h >= 44, JSON.stringify(r));
     const yml = readFileSync(path.join(root, ".github/ISSUE_TEMPLATE/feedback.yml"), "utf8");
+    check("感想フォームの name が3字以上（「感想」の2字だと GitHub がフォームを出さず白紙の Issue になる。shared-workflows incidents/2026-11-05-feedback-form-not-shown.md）", [...((yml.match(/^name:\s*(.+)$/m) || [])[1] || "").trim()].length >= 3 && /^description:\s*\S/m.test(yml), (yml.match(/^name:.*$/m) || [""])[0]);
     const ids = [...yml.matchAll(/^\s+id: (\S+)/gm)].map((x) => x[1]);
     check("感想フォームの項目は楽しさ・よかった所・直してほしい所だけ（名前・メールを聞かない）、ラベルは「感想」", ids.join() === "fun,good,fix" && /labels: \["感想"\]/.test(yml) && !/(email|メールアドレス|お名前)/i.test(yml.replace(/名前・メール[^\n]*/g, "")), ids.join());
     await p.close();
