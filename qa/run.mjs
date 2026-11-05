@@ -526,7 +526,7 @@ if (browser) try {
     check("実績は17個あり（名前が重ならない）、まだ遊んでいなければ1つも取れていない", a0.n === 17 && a0.ids === 17 && a0.got.length === 0, JSON.stringify(a0));
     await p.click('.lv[data-i="0"]'); await p.click("#go"); await playOn(p, "記事1");
     const r1 = await p.evaluate(() => document.querySelector("#achNew")?.textContent || "");
-    check("はじめて読み切ると、結果に新しい実績（はじめて読み切った・ヒントなし）が出る", r1.includes("はじめて読み切った") && r1.includes("ヒントなし"), r1);
+    check("はじめて読み切ると、結果に新しい実績（はじめて読み切った）が出る。はじめての1枚はヒントが自動で出るので「ヒントなし」は出ない", r1.includes("はじめて読み切った") && !r1.includes("ヒントなし"), r1);
     await p.click("#againRun"); await p.click("#go"); await playOn(p, "記事1");
     check("同じ実績は2回目には出ない", !(await p.evaluate(() => document.querySelector("#achNew")?.textContent || "").then((t) => t.includes("はじめて読み切った"))));
     const st = await p.evaluate(() => { localStorage.setItem("xdoko-streak", JSON.stringify({ last: 1, count: 7, max: 7 })); localStorage.setItem("xdoko-long-n", "12"); return achGot(); });
@@ -596,7 +596,7 @@ if (browser) try {
       const lim = Object.keys(TYPES).map((k) => [k, quickLim(k), TYPES[k].lv]);
       // はじめての1枚はヒントが自動で出る＝ヒントを見た広告なので、見切りに数えない
       localStorage.clear(); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
-      ORDER[n] = "corner"; openAd(true); adT = performance.now() - 300; win(); const firstAuto = QK[0];
+      ORDER[n] = "corner"; openAd(true); adT = performance.now() - 300; win(); const firstAuto = QK[0], autoHints = hints;
       localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 })); start(ARTICLES[0]); running = true; t0 = performance.now() - 15000;
       const close = (type, ago, hint) => { ORDER[n] = type; openAd(true); adT = performance.now() - ago * 1000; if (hint) { $("#hintBtn").click(); } win(); };
       close("corner", 1.0); const pop = document.querySelector("#pop").classList.contains("on") && document.querySelector("#pop").textContent;
@@ -604,11 +604,12 @@ if (browser) try {
       const qk = QK.slice(); finish();
       const line = document.querySelector("#quickLine")?.textContent || "", all1 = localStorage.getItem("xdoko-quickall");
       start(ARTICLES[0]); running = true; t0 = performance.now() - 15000; for (let i = 0; i < 4; i++) close("corner", 0.4); finish();
-      return { firstAuto, lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
+      return { firstAuto, autoHints, lim, pop, qk, line, all1, all2: localStorage.getItem("xdoko-quickall"), line2: document.querySelector("#quickLine")?.textContent || "", got: achGot().includes("quickAll"), ach: document.querySelector("#achNew")?.textContent || "" };
     });
     check("見切りの目安は★1が2.5秒・★2が3秒・★3が3.5秒、待つ広告（待たされる×・動画）は待つ5秒を足す", q.lim.every(([k, v, lv]) => v === ({ 1: 2.5, 2: 3, 3: 3.5 })[lv] + (["countdown", "video"].includes(k) ? 5 : 0)), JSON.stringify(q.lim));
     check("すばやく閉じると ⚡見切り が一瞬出て、おそい・ヒントを見た広告は見切りにならない（待つ広告は出てからの時間を、待ちの5秒を足した目安と比べる）", q.pop === "⚡ 見切り" && q.qk.join() === "true,false,true,false", JSON.stringify({ pop: q.pop, qk: q.qk }));
     check("はじめての1枚（ヒントが自動で出る）は、すばやく閉じても見切りに数えない", q.firstAuto === false, String(q.firstAuto));
+    check("はじめての1枚の自動のヒントもヒントの回数に数える（「ヒントなしで読み切る」の実績にしない）", q.autoHints === 1, String(q.autoHints));
     check("結果に「⚡ 見切り 2/4枚」が出て、全部でなければ実績の印は残さない", q.line.includes("⚡ 見切り 2/4枚") && !q.line.includes("全部") && q.all1 === null, JSON.stringify(q));
     check("全部見切ると「全部見切った！」と実績「ぜんぶ見切り」が取れ、結果に出る", q.line2.includes("4/4枚") && q.line2.includes("全部見切った") && q.all2 === "1" && q.got && q.ach.includes("ぜんぶ見切り"), JSON.stringify(q).slice(0, 300));
     await p.waitForTimeout(800);
@@ -616,6 +617,16 @@ if (browser) try {
     const pr = await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } })); practice("corner"); adT = performance.now() - 1200; win(); const a = document.querySelector("#prTime")?.textContent || ""; practice("corner"); adT = performance.now() - 6000; win(); const b = document.querySelector("#prTime")?.textContent || ""; return { a, b, st: localStorage.getItem("xdoko-stats") }; });
     check("練習で閉じると、閉じるまでの秒数と見切りの目安が出る（記録は増えない）", pr.a.includes("閉じるまで 1.2秒") && pr.a.includes("見切り！") && pr.b.includes("見切りは 2.5秒 以内") && pr.st === null, JSON.stringify(pr));
     await p.close();
+  }
+  // 5l2. 0時をまたいで読み切った今日の1本は、その日に記録が無ければ「あとから」に入れる（★・連続に数えない）
+  {
+    const p = await open({ unlock: false });
+    const r = await p.evaluate(() => {
+      localStorage.clear(); localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 }));
+      const d = today() - 1; start(dailyArt(d), dailyMode(d)); running = true; t0 = performance.now() - 20000; finish();
+      return { late: localStorage.getItem("xdoko-late-" + d), daily: localStorage.getItem("xdoko-daily-" + d), streak: localStorage.getItem("xdoko-streak") };
+    });
+    check("0時をまたいで読み切った今日の1本は xdoko-late- に入り、xdoko-daily-・連続には入らない", !!r.late && r.daily === null && r.streak === null, JSON.stringify(r));
   }
 
   // 5m. 実績の画面：まだのものは「いま/目標」と進み具合のバー。合計の日数（あとからも数える）

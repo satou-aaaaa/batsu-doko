@@ -564,7 +564,7 @@ function openAd(full){
   const type=ORDER[n], T=TYPES[type], ad=el(T.html(rnd(PRODUCTS)));ad.dataset.type=type;stage.appendChild(ad);
   const w=document.createElement('div');w.className='hint';w.id='hintTxt';w.hidden=true;w.textContent='ヒント：'+T.hint;stage.appendChild(w);
   // はじめての1枚（まだ1枚も閉じたことがない人）は、ヒントを時間なしで先に見せる。最初の1枚でつまずいてやめないように
-  if(MODE.kind!=='practice'&&!MODE.hard&&!(stats().closed||0)&&n===0){w.hidden=false;used[n]=true;w.textContent='はじめての1枚なので、ヒントを時間なしで出しています。'+T.hint}
+  if(MODE.kind!=='practice'&&!MODE.hard&&!(stats().closed||0)&&n===0){w.hidden=false;used[n]=true;hints++;w.textContent='はじめての1枚なので、ヒントを時間なしで出しています。'+T.hint}
   ad.addEventListener('click',e=>{const t=e.target;
     const r=t.closest('.real');if(r&&!r.disabled)return win();
     if(t.closest('.nest')||t.closest('.skip'))return;
@@ -627,6 +627,8 @@ function shareInfo(t){
     text:`×はどこだ ${nm}「${A.site}」\n${grid} ${fmt(t)} ${md}\n#×はどこだ`};
 }
 function finish(){
+  // 0時をまたいで読み切った今日の1本は、その日にまだ記録が無ければ「あとから」に入れる（★・連続に数えない）
+  if(MODE.kind==='daily'&&!MODE.late&&MODE.day!==today()&&!dBest(MODE.day))MODE={...MODE,late:true};
   stop();SND.clear();const t=Number(now().toFixed(1));$('#clock').textContent=fmt(t);hud();
   const had=achGot(), qk=QK.filter(Boolean).length, N=ORDER.length;if(!hints)store.set('xdoko-nohint','1');
   if(qk===N&&!hints)store.set('xdoko-quickall','1');
