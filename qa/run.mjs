@@ -179,7 +179,7 @@ if (browser) try {
   // 5. 時間・ヒント・記録・解放
   {
     const p = await open({ unlock: false });
-    check("最初は記事1だけ開いている", !(await p.isDisabled('.lv[data-i="0"]')) && (await p.isDisabled('.lv[data-i="1"]')) && (await p.isDisabled('.lv[data-i="2"]')));
+    check("最初から記事1〜5が全部押せる（順に読まなくてよい）", !(await p.isDisabled('.lv[data-i="0"]')) && !(await p.isDisabled('.lv[data-i="1"]')) && !(await p.isDisabled('.lv[data-i="4"]')));
     await p.evaluate(() => localStorage.setItem("xdoko-stats", JSON.stringify({ clear: 0, closed: 1, virus: 0 })));
     await startArt(p, 0);
     for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
@@ -350,14 +350,18 @@ if (browser) try {
       return { i, min: Math.min(...ys.map((y, k) => (k ? y - ys[k - 1] : y))), n: ys.length, want: hardOf(A).ads - (A.vignette ? 1 : 0) }; }, i));
     const tightH = gapsH.filter((g) => g.min < H * 0.75 || g.n !== g.want);
     check("上級でも、関所を20回置き直して広告の間はいつも0.75画面以上・数がそろう", tightH.length === 0, tightH.map((g) => `記事${g.i + 1}:${Math.round(g.min)}px n=${g.n}/${g.want}`).join(","));
-    // まだどれも読み切っていないときは、鍵のかかった上級を並べず1行の案内だけ
+    // 好きなだけ遊べる（2026-11-06）：はじめての人でも、記事・上級・ロングが全部押せる。🔒・「…すると開く」は出さない
     await p.evaluate(() => { localStorage.clear(); menu(); });
-    check("まだ読み切った記事が無いとき、上級は1行の案内だけ（鍵のかかった6つを並べない）", (await p.isVisible("#hardNote")) && !(await p.isVisible('.lv[data-h="0"]')));
+    const open0 = await p.evaluate(() => { const bs = [...document.querySelectorAll(".lv")]; return { n: bs.length, dis: bs.filter((b) => b.disabled).length, gate: /🔒|すると開|が開きます/.test(document.querySelector("#stage").textContent), hard: document.querySelectorAll('.lv[data-h]').length, vis: [...document.querySelectorAll(".lv")].every((b) => b.offsetHeight >= 44) }; });
+    check("はじめての人でも、記事5本・上級5本・ロングが全部押せる（🔒・「…すると開く」なし）", open0.n === 11 && open0.dis === 0 && !open0.gate && open0.hard === 5 && open0.vis, JSON.stringify(open0));
+    await p.click('.lv[data-i="4"]');
+    check("はじめての人が記事5をいきなり始められる", await p.evaluate(() => A === ARTICLES[4] && MODE.kind === "article") && await p.isVisible("#go"));
+    await p.evaluate(() => menu()); await p.click('.lv[data-h="3"]');
+    check("はじめての人が上級（記事4）をいきなり始められる", await p.evaluate(() => A === ARTICLES[3] && MODE.hard === true));
+    await p.evaluate(() => menu());
     await p.evaluate(() => { localStorage.setItem("xdoko-dex", JSON.stringify({ corner: { n: 1, clean: true } })); fail("検査"); showDex(); });
     check("感染の画面のあとに図鑑を開いても、感染の画面が残らない", await p.evaluate(() => document.querySelector("#virus").hidden) && (await p.isVisible(".dex")));
-    // 解放：ふつうで読み切った記事だけ上級が開く
     await p.evaluate(() => { localStorage.clear(); localStorage.setItem("xdoko-best-recipe", "25.0"); menu(); });
-    check("上級は、ふつうで読み切った記事だけ開く", !(await p.isDisabled('.lv[data-h="0"]')) && (await p.isDisabled('.lv[data-h="1"]')) && (await p.isDisabled('.lv[data-h="2"]')));
     // メダル
     const md = await p.evaluate(() => { const a = ARTICLES[0]; return [medal(a.gold, a, false), medal(a.gold * 1.4, a, false), medal(a.gold * 1.4 + 0.1, a, false), medal(a.goldH, a, true), medal(0, a, false), nextMedal(a.gold + 1, a, false), nextMedal(a.gold * 2, a, false)]; });
     check("メダル：金は目安以内・銀は1.4倍以内・それより遅ければ銅、上級は上級の目安で決まる", md.slice(0, 5).join() === "🥇,🥈,🥉,🥇,", md.join());
@@ -491,12 +495,10 @@ if (browser) try {
     await p.close();
   }
 
-  // 5g. ロング：3本つなぎ・広告12枚・先ほど難しい。3本とも読み切ると開く
+  // 5g. ロング：3本つなぎ・広告12枚・先ほど難しい。はじめから遊べる
   {
     const p = await open({ unlock: false });
-    check("ロングは、記事1〜3を読み切るまで開かない", await p.isDisabled("#longBtn"));
-    await p.evaluate(() => { ARTICLES.forEach((a) => localStorage.setItem("xdoko-best-" + a.id, "99.0")); menu(); });
-    check("3本とも読み切るとロングが開く", !(await p.isDisabled("#longBtn")));
+    check("ロングは、はじめから押せる（記事を読み切らなくても）", !(await p.isDisabled("#longBtn")) && !(await p.textContent("#longBtn")).includes("🔒"));
     const lo = await p.evaluate(() => { const bad = []; for (let r = 0; r < 500; r++) { R = Math.random; const o = pickOrder(LONG); const lv = o.map((t) => TYPES[t].lv).join("");
       if (o.length !== 12 || new Set(o).size !== 12 || lv !== "111122223333") { bad.push(o.join()); break; } } return bad; });
     check("ロングの広告の並びを500回作って、どれも12枚・重なりなし・★1→★2→★3を4枚ずつ", lo.length === 0, lo.join(" / "));
@@ -773,11 +775,13 @@ if (browser) try {
     await p.close();
   }
 
-  // 5o. とことん：記事が次々に出て、先ほど広告が強くなる。🎫3枚（まちがい・ヒントで1枚）、降りる・自己ベスト・続きから
+  // 5o. とことん：記事が次々に出て、先ほど広告が強くなる。まちがえても・ヒントを何度見ても続く（チケットなし）、降りる・自己ベスト・続きから
   {
     const src = readFileSync(path.join(root, "index.html"), "utf8");
     const nRand = (src.match(/Math\.random/g) || []).length;
-    check("乱数（ふだんの乱数）を使う所は、ふつうの記事・感染の画面・とことんの6か所だけ（今日の1本・挑戦状は日の番号の乱数）", nRand === 6, nRand);
+    check("乱数（ふだんの乱数）を使う所は、ふつうの記事・感染の画面・とことんの7か所だけ（今日の1本・挑戦状は日の番号の乱数）", nRand === 7, nRand);
+    check("ページに🎫（チケット）が無い", !src.includes("🎫"));
+    check("ページに「…すると開く」のような鍵の言葉・🔒が無い", !/すると開く|が開きます|🔒/.test(src), (src.match(/.{20}(すると開く|が開きます|🔒).{10}/) || [""])[0]);
     const p = await open({ unlock: false });
     const lists = await p.evaluate(() => {
       const bad = []; const firsts = new Set();
@@ -797,6 +801,13 @@ if (browser) try {
     });
     check("とことんの並びを300回作って、続けて同じ記事が出ず、難しさは下がらない（★1→★2→★3→難しい広告だけ）", lists.bad.length === 0, lists.bad.join(" / "));
     check("とことんの並びは毎回ちがう", lists.uniq >= 290, lists.uniq);
+    // 1回の中では、記事を1巡するまで同じ記事を出さない。使い切ったら次の並びを足し、そこでも続けて同じ記事は出さない（何百回）
+    const ext = await p.evaluate(() => { const bad = []; for (let r = 0; r < 300; r++) { R = Math.random; let L = endlessList(); for (let k = 0; k < 3; k++) L = L.concat(endlessList(L.length, L[L.length - 1].id));
+      if (L.length !== 120) bad.push("長さ" + L.length);
+      for (let i = 0; i < L.length; i += ARTICLES.length) { const w = L.slice(i, i + ARTICLES.length).map((x) => x.id); if (new Set(w).size !== w.length) { bad.push("1巡の中で重なり" + i); break; } }
+      L.forEach((x, i) => { if (i && L[i - 1].id === x.id) bad.push("続けて同じ記事" + i); if (i >= 4 && !x.hard) bad.push("足した段が難しくない" + i); }); }
+      return bad.slice(0, 5); });
+    check("とことんを300回・120本まで伸ばして、記事は1巡するまで重ならず、続けて同じ記事も出ない（足した分も難しい広告だけ）", ext.length === 0, ext.join(" / "));
     // 関所：とことんの段で何百回作り直しても、ふさぐ広告の間は0.75画面以上
     const eg = await p.evaluate(() => { let min = 1e9, wrong = 0; for (let r = 0; r < 200; r++) { R = Math.random; const x = endlessList()[r % 30]; A = byId(x.id); MODE = { kind: "endless", cfg: ecfgOf(x) }; build(); const p2 = document.querySelector("#p2"); if (p2) p2.hidden = false;
       const top = document.querySelector("#art").getBoundingClientRect().top; const ys = [...document.querySelectorAll(".gate")].map((g) => g.getBoundingClientRect().top - top);
@@ -807,39 +818,53 @@ if (browser) try {
     const hb = await p.evaluate(() => { const b = document.querySelector("#go-e"); return b ? { t: b.textContent, h: b.offsetHeight } : null; });
     check("ホームに大きな「とことん」のボタン（44px以上）", hb && hb.t.includes("とことん") && hb.h >= 44, JSON.stringify(hb));
     await p.click("#go-e");
-    check("とことんの1本目は★1の記事で、降りるボタンがある", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.tk === 3 && ORDER.every((t) => TYPES[t].lv === 1)) && await p.isVisible("#eStop"));
+    check("とことんの1本目は★1の記事で、降りるボタンがある", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.tk === undefined && ORDER.every((t) => TYPES[t].lv === 1)) && await p.isVisible("#eStop"));
+    check("とことんの始めの画面に🎫・おしまいの決まりが無い", !/🎫|おしまい/.test(await p.textContent("#eCard")) && (await p.textContent("#eCard")).includes("まちがえても"));
     await p.click("#go");
     check("遊ぶあいだ「ここで降りる」が出る（44px以上）", await p.isVisible("#eQuit") && (await p.locator("#eQuit").boundingBox()).height >= 44);
     const n1 = await p.evaluate(() => ORDER.length);
     await playOn(p, "とことん1本目");
-    const s1 = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem("xdoko-erun")); return { i: r.i, c: r.c, tk: r.tk, d: Object.keys(localStorage).filter((k) => /^xdoko-(daily|late|best|split)-|xdoko-streak/.test(k)).length }; });
-    check("1本読み切ると次の記事へ進み、閉じた数が残る（今日の記録・ベスト・連続には入らない）", s1.i === 1 && s1.c === n1 && s1.tk === 3 && s1.d === 0, JSON.stringify(s1));
+    const s1 = await p.evaluate(() => { const r = JSON.parse(localStorage.getItem("xdoko-erun")); return { i: r.i, c: r.c, d: Object.keys(localStorage).filter((k) => /^xdoko-(daily|late|best|split)-|xdoko-streak/.test(k)).length }; });
+    check("1本読み切ると次の記事へ進み、閉じた数が残る（今日の記録・ベスト・連続には入らない）", s1.i === 1 && s1.c === n1 && s1.d === 0, JSON.stringify(s1));
     await p.click("#eNextBtn"); await p.click("#go");
     check("2本目は★2まで（★2を1枚は入れる）", await p.evaluate(() => ORDER.some((t) => TYPES[t].lv === 2) && ORDER.every((t) => TYPES[t].lv <= 2)));
-    // 記事の中の広告を押す（まちがい）→ 🎫が減るだけで、感染しない
+    // 記事の中の広告を押す（まちがい）→ 短い知らせだけで、感染しない。何回まちがえても続く
     const miss = async () => { await p.evaluate(() => { const x = document.querySelector("#art .inad"); x.click(); }); await p.waitForTimeout(50); };
-    await miss();
-    check("まちがえると🎫が1枚減り、感染の画面は出ない", await p.evaluate(() => E.tk === 2 && JSON.parse(localStorage.getItem("xdoko-erun")).tk === 2) && !(await p.isVisible("#virus")));
-    // 続きから：開き直すと、その記事の始めから。閉じた数は記事の始めに戻り、🎫は戻らない
+    for (let k = 0; k < 5; k++) await miss();
+    const ms = await p.evaluate(() => ({ m: E.m, saved: JSON.parse(localStorage.getItem("xdoko-erun")).m, run: running, kind: MODE.kind, toast: (document.querySelector(".toast") || {}).textContent || "" }));
+    check("とことんで5回まちがえても、感染の画面は出ず、そのまま続く（まちがいの数は数えるだけ）", ms.m === 5 && ms.saved === 5 && ms.run && ms.kind === "endless" && !(await p.isVisible("#virus")), JSON.stringify(ms));
+    // 続きから：開き直すと、その記事の始めから。閉じた数は記事の始めに戻る。前の版のチケット（tk）が残った記録でも読める
+    await p.evaluate(() => { const r = JSON.parse(localStorage.getItem("xdoko-erun")); r.tk = 0; localStorage.setItem("xdoko-erun", JSON.stringify(r)); });
     await p.reload(); await p.waitForTimeout(200);
     const lbl = await p.textContent("#go-e");
     check("ホームのボタンに「つづきから」が出る", lbl.includes("つづきから"), lbl);
     await p.click("#go-e");
-    const rs = await p.evaluate(() => ({ i: E.i, c: E.c, tk: E.tk }));
-    check("続きから：2本目・閉じた数は1本目の終わり・🎫は2枚のまま", rs.i === 1 && rs.c === n1 && rs.tk === 2, JSON.stringify(rs));
+    const rs = await p.evaluate(() => ({ i: E.i, c: E.c }));
+    check("続きから：2本目・閉じた数は1本目の終わり（前の版のチケットが0でも遊べる）", rs.i === 1 && rs.c === n1, JSON.stringify(rs));
     await p.click("#go");
-    await miss(); await miss();
-    // 🎫0：ヒントは押せない
+    // ヒントは何度でも（押せなくならない）。広告の中のまちがいでも続く
     for (let k = 0; k < 400 && !(await adOpen(p)); k++) { await scroll(p); await p.waitForTimeout(15); }
-    const hd = await p.evaluate(() => { const b = document.querySelector("#hintBtn"); return { dis: b.disabled, t: b.textContent }; });
-    check("🎫が0だとヒントは押せない", hd.dis && hd.t.includes("ありません"), JSON.stringify(hd));
-    const cNow = await p.evaluate(() => E.c);
+    const hd = await p.evaluate(() => { const b = document.querySelector("#hintBtn"); const r = { dis: b.disabled, t: b.textContent }; b.click(); r.shown = !document.querySelector("#hintTxt").hidden; return r; });
+    check("とことんのヒントは何度でも押せる（🎫なし）", !hd.dis && hd.shown && hd.t.includes("何度でも") && !hd.t.includes("🎫"), JSON.stringify(hd));
     await p.evaluate(() => { const f = document.querySelector("#stage .fake,#stage .big,#stage .buy"); f.click(); });
     await p.waitForTimeout(100);
-    const ov = await p.evaluate(() => ({ v: !document.querySelector("#virus").hidden, line: (document.querySelector("#eOverLine") || {}).textContent || "", best: localStorage.getItem("xdoko-ebest"), run: !!eRun() }));
-    check("🎫0でまちがえると感染の画面でおしまい。自己ベストが残り、続きは消える", ov.v && ov.line.includes(`${cNow}枚`) && ov.best === String(cNow) && !ov.run, JSON.stringify(ov));
-    await p.evaluate(() => document.querySelector("#againBtn").click());
-    check("感染の画面の「もう一度」で、とことんを1本目から", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.c === 0 && E.tk === 3));
+    const ov = await p.evaluate(() => ({ v: !document.querySelector("#virus").hidden, run: !!eRun(), inAd, kind: MODE.kind, h: E.h, m: E.m }));
+    check("ヒントのあと広告の中でまちがえても、感染せず同じ広告のまま続く", !ov.v && ov.run && ov.inAd && ov.kind === "endless" && ov.h === 1 && ov.m >= 1, JSON.stringify(ov));
+    // 30本を使い切っても終わらず、次の並びを足して続く
+    const more = await p.evaluate(() => { stop(); E.i = E.list.length - 1; E.order = null; E.c0 = E.c; const last = E.list[E.list.length - 1].id; eNext(); return { len: E.list.length, i: E.i, next: E.list[E.i].id !== last, hard: E.list[E.i].hard, btn: !!document.querySelector("#eNextBtn"), end: !!document.querySelector("#eEnd") }; });
+    check("とことんの30本を読み切っても終わらず、次の並びを足して31本目へ（続けて同じ記事でない）", more.len === 60 && more.i === 30 && more.next && more.hard && more.btn && !more.end, JSON.stringify(more));
+    await p.evaluate(() => { E.m = 2; E.h = 1; eEnd(); });
+    const ec = await p.evaluate(() => ({ t: document.querySelector("#eCounts").textContent, kofi: !!document.querySelector("#kofi") }));
+    check("とことんの終わりの画面に、まちがい・ヒントの回数が出る（Ko-fi は出さない）", ec.t.includes("まちがい 2回") && ec.t.includes("ヒント 1回") && !ec.kofi, JSON.stringify(ec));
+    await p.evaluate(() => startEndless(true));
+    check("「もう一度とことん」で1本目から（チケットなし）", await p.evaluate(() => MODE.kind === "endless" && E.i === 0 && E.c === 0 && E.tk === undefined));
+    // 同じ並びがすぐ戻らない：記事1（並びの種類がいちばん少ない）を60回続けて遊んでも、ふつう・上級とも同じ広告の並びが出ない。とことん100本でも（記事＋並び）が重ならない
+    const rp = await p.evaluate(() => { localStorage.removeItem("xdoko-recent"); const res = {};
+      for (const hard of [false, true]) { const ks = []; for (let k = 0; k < 60; k++) { start(ARTICLES[0], { kind: "article", hard }); ks.push(ORDER.join()); } res[hard ? "h" : "n"] = new Set(ks).size; }
+      const seeds = new Set(); for (let k = 0; k < 5; k++) { start(ARTICLES[0], { kind: "article", seed: 4242 }); seeds.add(ORDER.join()); } res.link = seeds.size;
+      startEndless(true); const ek = []; for (let k = 0; k < 100; k++) { ek.push(A.id + ":" + ORDER.join()); stop(); eNext(); eStage(E); } res.e = new Set(ek).size; res.len = E.list.length;
+      const kept = JSON.parse(localStorage.getItem("xdoko-recent")); res.cap = Object.values(kept).every((l) => l.length <= 60); stop(); startEndless(true); return res; });
+    check("記事1を60回続けても同じ広告の並びが出ない（ふつう・上級）。挑戦状の番号の並びは変わらない。とことん100本で重なりなし・覚えるのは60件まで", rp.n === 60 && rp.h === 60 && rp.link === 1 && rp.e === 100 && rp.len >= 100 && rp.cap, JSON.stringify(rp));
     // 降りる：自己ベストを下げない
     await p.evaluate(() => localStorage.setItem("xdoko-ebest", "99"));
     await p.click("#eStop");
@@ -914,9 +939,9 @@ if (!results.length) check("検査が1つも動いた", false);
       if (a11y) await ctx.addInitScript((s) => { localStorage.setItem("a11y-v1", JSON.stringify(s)); }, a11y);
       const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message));
       await p.goto(url);
-      // まだ開いていない記事：うすくしただけでなく 🔒 の文字と点線の枠
-      const lock = await p.evaluate(() => [...document.querySelectorAll(".lv[disabled]")].map((b) => ({ t: b.textContent.includes("🔒"), dash: getComputedStyle(b).borderStyle === "dashed", op: +getComputedStyle(b).opacity })));
-      check(`まだ開いていない記事は 🔒 と点線の枠でも分かる（色・うすさだけでない）：${label}`, lock.length > 0 && lock.every((x) => x.t && x.dash && x.op === 1), JSON.stringify(lock.slice(0, 3)));
+      // 好きなだけ遊べる：はじめての画面でも、押せない記事・🔒は無い
+      const lock = await p.evaluate(() => ({ dis: document.querySelectorAll(".lv[disabled]").length, gate: document.querySelector("#stage").textContent.includes("🔒") }));
+      check(`はじめての画面でも押せない記事・🔒が無い：${label}`, lock.dis === 0 && !lock.gate, JSON.stringify(lock));
       // カレンダー：今日の1本 ★・あとから ↺・あとから読める日 ▶（点線）
       const cal = await p.evaluate(() => { window.__XDOKO_DAY = 5; localStorage.setItem("xdoko-daily-3", "30.0"); localStorage.setItem("xdoko-late-2", "40.0"); showCal();
         const q = (s) => document.querySelector(s); const r = { pl: q(".cal .pl i")?.textContent, late: q(".cal .late i")?.textContent, miss: q(".cal .miss i")?.textContent, missDash: getComputedStyle(q(".cal .miss")).borderStyle, legend: q(".legend").textContent };

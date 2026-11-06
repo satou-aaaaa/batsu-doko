@@ -118,9 +118,6 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .card p{margin:6px 0;font-size:14px;line-height:1.7}
 .levels{display:flex;flex-direction:column;gap:10px;margin:14px 0 4px}
 .lv{display:flex;align-items:center;gap:12px;text-align:left;border:2px solid var(--ink);border-radius:10px;background:var(--paper);padding:10px 12px;cursor:pointer;font:700 14px var(--body);color:var(--ink)}
-/* まだ開いていない記事：うすくせず（字が読めなくなる）、点線の枠と 🔒 で分ける */
-.lv[disabled]{cursor:default;border-style:dashed;border-color:var(--muted);background:var(--card);color:var(--muted)}
-.lv[disabled] .n{color:var(--muted)}
 .lv .n{font-family:var(--display);font-size:20px;color:var(--hot);width:1.4em}
 .lv .t{flex:1;min-width:0}
 .lv small{display:block;color:var(--muted);font-weight:400}
@@ -608,7 +605,7 @@ const ARTICLES=[
    ['もう一度見直すなら','🔍','次は、車を持ち続けるかどうかを考えるつもりです。|使う回数を数えてから決めます。'],
    ['まとめ','','固定費は一度見直せば、何もしなくても毎月効きます。まずは書き出すところから始めてみてください。|（この記事は架空の体験談です。金額は一例です）']]},
 ];
-// ロング：3本の記事をつないだ「まとめ」の長いページ。広告12枚で、先へ進むほど難しい（★1→★2→★3を4枚ずつ）。並びは遊ぶたびに変わる。3本とも読み切ると開く
+// ロング：3本の記事をつないだ「まとめ」の長いページ。広告12枚で、先へ進むほど難しい（★1→★2→★3を4枚ずつ）。並びは遊ぶたびに変わる。はじめから遊べる
 const LONG={id:'long',site:'よみもの広場',color:'#7a4fd0',ph:'linear-gradient(135deg,#e6dcff,#ffe0ec)',crumb:'ホーム › まとめ',title:'今週よく読まれた記事 3本まとめ読み',meta:'2026年11月3日 更新',
   ads:12,lv:3,vignette:false,anchor:true,appbar:true,gold:110,goldH:140,long:true,
   get secs(){return ARTICLES.slice(0,3).flatMap(a=>a.secs.map((x,i)=>i===0?[`【${a.site}】${a.title}`,'',x.length===3?x[2]:x[1]]:x))}};
@@ -662,6 +659,11 @@ function medal(t,a,h){if(!t)return '';const g=goldOf(a,h);return t<=g?'🥇':t<=
 function nextMedal(t,a,h){const g=goldOf(a,h);if(t<=g)return '';const s=t<=g*1.4?['金',g]:['銀',g*1.4];return `${s[0]}まで あと ${fmt(Math.max(0.1,t-s[1]))}`}
 // 図鑑と記録（この端末のブラウザにだけ残す）
 function getJ(k,d){try{return JSON.parse(store.get(k))||d}catch(e){return d}}
+// 同じ広告の並びがすぐ戻らないよう、記事ごとに最近の並び（60件）を覚えて、ふつうの記事・上級・とことんで避ける（2026-11-06 好きなだけ遊んでも同じにならない）。今日の1本・挑戦状の並びは変えない
+const RKEY='xdoko-recent', RMAX=60;
+const recentOf=id=>{const o=getJ(RKEY,{});return o&&Array.isArray(o[id])?o[id]:[]};
+function remember(id,ord){const o=getJ(RKEY,{}), m=o&&typeof o==='object'&&!Array.isArray(o)?o:{}, k=ord.join();m[id]=(Array.isArray(m[id])?m[id]:[]).filter(x=>x!==k).concat(k).slice(-RMAX);store.set(RKEY,JSON.stringify(m))}
+function freshOrder(id,c){const rc=recentOf(id);let o;for(let k=0;k<40;k++){o=pickOrder(c);if(!rc.includes(o.join()))break}return o}
 const dex=()=>getJ('xdoko-dex',{}), stats=()=>getJ('xdoko-stats',{clear:0,closed:0,virus:0});
 const oldRun=()=>MODE.kind==='daily'&&(MODE.old||MODE.day<today()-7); // 7日より前の日の挑戦状：遊べるが、図鑑・実績・数のどれにも残さない
 function bump(k){const s=stats();s[k]=(s[k]||0)+1;store.set('xdoko-stats',JSON.stringify(s))}
@@ -771,7 +773,7 @@ function win(){
 // 読み進めて「関所」が画面の下のほうまで来たら、少し遅れて広告が出る（本物の広告も読み込みに一瞬かかる）
 function hud(){
   const m=page.scrollHeight-page.clientHeight;$('#progBar').style.width=(running&&m>0?Math.min(100,page.scrollTop/m*100):0)+'%';
-  $('#cnt').textContent=MODE.kind==='endless'&&E&&(running||inAd)?`🎫${E.tk}・${E.c}枚`:running||inAd?'広告 '+Math.min(n,ORDER.length)+'/'+ORDER.length:'';
+  $('#cnt').textContent=MODE.kind==='endless'&&E&&(running||inAd)?`閉じた ${E.c}枚`:running||inAd?'広告 '+Math.min(n,ORDER.length)+'/'+ORDER.length:'';
 }
 function check(){
   hud();if(!running||inAd||pend)return;
@@ -785,7 +787,7 @@ function stop(){running=false;cancelAnimationFrame(raf);clearTimeout(pend);pend=
 // 押してはいけない所を押した。何がちがったか・正しい閉じ方・どこまで読めたかを見せる
 function fail(why,how){
   if(MODE.kind==='practice')return practiceEnd(false,why);
-  if(MODE.kind==='endless'&&E){if(E.tk>0){E.tk--;saveE();eSync();tone(220,.15,'square',.08);toast(`まちがい　🎫のこり${E.tk}枚`,1600);return}return eOver(why,how)}
+  if(MODE.kind==='endless'&&E){E.m=(E.m||0)+1;saveE();eSync();tone(220,.15,'square',.08);toast('まちがい：'+(why||'そこは広告の一部')+'。そのまま続けよう',1800);return} // とことんは何回まちがえても続く（2026-11-06 好きなだけ遊べる）
   const m=page.scrollHeight-page.clientHeight, pct=m>0?Math.round(Math.min(1,page.scrollTop/m)*100):0;
   if(!how)how=inAd&&TYPES[ORDER[n]]?'正しくは：'+TYPES[ORDER[n]].hint:'';
   const left=ORDER.length-n, lg=A&&A.long&&MODE.kind==='article';
@@ -859,10 +861,10 @@ const okSeed=s=>Number.isInteger(s)&&s>=1&&s<2147483647;
 // もう一度：今日の1本と挑戦状は同じ並び、ふつうの記事は新しい並び
 const again=()=>MODE.kind==='article'&&!MODE.rival?{kind:'article',hard:!!MODE.hard}:MODE;
 function start(a,mode={kind:'article'}){
-  if(mode.kind==='article'&&!okSeed(mode.seed))mode={...mode,seed:newSeed()};
+  if(mode.kind==='article'&&!okSeed(mode.seed)){const rc=recentOf(a.id), c=mode.hard?hardOf(a):a;let sd=newSeed();for(let k=0;k<40;k++){R=seeded(sd);if(!rc.includes(pickOrder(c).join()))break;sd=newSeed()}mode={...mode,seed:sd}} // 最近遊んだ並びにならない番号を選ぶ（挑戦状の番号はそのまま）
   stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];SPL=[];QK=[];
   R=seeded(mode.kind==='daily'?mode.day:mode.seed);
-  ORDER=pickOrder(cfg());$('#virus').hidden=true;$('#panel').hidden=true;
+  ORDER=pickOrder(cfg());if(mode.kind==='article')remember(a.id,ORDER);$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const label=mode.kind==='daily'?(mode.late?`${mdOf(mode.day)}の1本（あとから）`:mode.old?`#${mode.day}の1本（記録に残りません）`:`今日の1本 #${mode.day}${mode.hard?' 上級の日':''}`):a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
@@ -888,19 +890,19 @@ function nextGoal(){
 function menu(){
   stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
   stage.className='menu';stage.hidden=false;stage.innerHTML='';
-  const all=ARTICLES.every(a=>cleared(a.id)), long3=ARTICLES.slice(0,3).every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
+  const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p data-a11y-say>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
    <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
    <button class="daily" id="dailyBtn" type="button"><span class="t">今日の1本 #${d}${hardDay(d)?' <span class="streak">上級の日</span>':''}<small>${hardDay(d)?'日曜は難しい広告だけ・ヒントなし':'みんな同じ広告の並び'}${st>1?` ・<span class="streak">🔥${st}日連続</span>`:''}</small></span>${db?`<span class="bt">${fmt(db)}</span>`:'<span class="go">遊ぶ</span>'}</button>
-   <button class="daily endl" id="go-e" type="button"><span class="t">とことん：何枚続けて閉じられる？<small>記事が次々・広告がだんだん強く・🎫3枚${(r=>r?` ・つづきから（${r.c}枚）`:'')(eRun())}</small></span>${ebest()?`<span class="bt">ベスト ${ebest()}枚</span>`:'<span class="go">遊ぶ</span>'}</button>
+   <button class="daily endl" id="go-e" type="button"><span class="t">とことん：何枚続けて閉じられる？<small>記事が次々・広告がだんだん強く・まちがえても続く${(r=>r?` ・つづきから（${r.c}枚）`:'')(eRun())}</small></span>${ebest()?`<span class="bt">ベスト ${ebest()}枚</span>`:'<span class="go">遊ぶ</span>'}</button>
    ${(g=>g?`<button class="goal" id="goalBtn" type="button"><span>▶ ${g.txt}</span><small>${g.sub}</small></button>`:'')(nextGoal())}
    <p class="sec">記事を順に読む</p>
-   <div class="levels">${ARTICLES.map((a,i)=>{const lock=i>0&&!cleared(ARTICLES[i-1].id);return `<button class="lv" type="button" data-i="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'🔒 前の記事を読み切ると開く':'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`}).join('')}</div>
+   <div class="levels">${ARTICLES.map((a,i)=>`<button class="lv" type="button" data-i="${i}"><span class="n">${i+1}</span><span class="t">${a.site}<small>${'広告 '+a.ads+'枚'}</small></span><span class="bt">${best(a.id)?fmt(best(a.id)):'—'}<span class="md">${medal(best(a.id),a,false)}</span></span></button>`).join('')}</div>
    <p class="sec">上級（難しい広告だけ・ヒントなし）</p>
-   ${ARTICLES.some(a=>cleared(a.id))?'':'<p class="total" id="hardNote">ふつうで読み切った記事から、上級が開きます</p>'}<div class="levels"${ARTICLES.some(a=>cleared(a.id))?'':' hidden'}>${ARTICLES.map((a,i)=>{const lock=!cleared(a.id);return `<button class="lv hard" type="button" data-h="${i}"${lock?' disabled':''}><span class="n">${i+1}</span><span class="t">${a.site}<small>${lock?'🔒 ふつうで読み切ると開く':'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`}).join('')}</div>
+   <div class="levels">${ARTICLES.map((a,i)=>`<button class="lv hard" type="button" data-h="${i}"><span class="n">${i+1}</span><span class="t">${a.site}<small>${'広告 '+hardOf(a).ads+'枚・金は '+fmt(a.goldH)+' 以内'}</small></span><span class="bt">${bestH(a.id)?fmt(bestH(a.id)):'—'}<span class="md">${medal(bestH(a.id),a,true)}</span></span></button>`).join('')}</div>
    <p class="total">${all?ARTICLES.length+'本の合計ベスト '+fmt(sum):ARTICLES.length+'本読み切ると合計タイムが出ます'}</p>
    <p class="sec">ロング（3本つなぎ・広告12枚・先ほど難しい）</p>
-   <div class="levels"><button class="lv long" type="button" id="longBtn"${long3?'':' disabled'}><span class="n">12</span><span class="t">${LONG.site}<small>${long3?`遊ぶたびに並びが変わる・最高 ${longN()}/12枚`:'🔒 記事1〜3を読み切ると開く'}</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
+   <div class="levels"><button class="lv long" type="button" id="longBtn"><span class="n">12</span><span class="t">${LONG.site}<small>遊ぶたびに並びが変わる・最高 ${longN()}/12枚</small></span><span class="bt">${best('long')?fmt(best('long')):'—'}<span class="md">${medal(best('long'),LONG,false)}</span></span></button></div>
    <button class="big btn2" id="dexBtn" type="button" style="width:100%;margin-top:10px">広告図鑑 ${dexN()}/${Object.keys(TYPES).length}</button>
    <div class="row2"><button class="big btn2" id="achBtn" type="button">🏅 実績 ${achGot().length}/${ACH.length}</button><button class="big btn2" id="calBtn" type="button">📅 カレンダー${(l=>l?`<small>あとから ${l}日</small>`:'')(lateDays().length)}</button></div>
    <div class="menuopts"><button class="icon" id="menuSound" type="button" style="width:auto;padding:0 16px">${soundOn?'🔊 音あり':'🔇 音なし'}</button><button class="icon" id="menuA11y" type="button" data-a11y-open style="width:auto;padding:0 16px">Aa 見やすさ</button><button class="icon" type="button" data-hk style="width:auto;padding:0 16px">🔁 記録の引き継ぎ</button></div>
@@ -910,9 +912,9 @@ function menu(){
   const gb=box.querySelector('#goalBtn');if(gb)gb.onclick=()=>nextGoal().go();
   box.querySelector('#dailyBtn').onclick=()=>start(dailyArt(d),dailyMode(d));
   box.querySelector('#go-e').onclick=()=>startEndless(false);
-  box.querySelectorAll('.lv[data-i]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.i])});
-  box.querySelectorAll('.lv[data-h]').forEach(b=>b.onclick=()=>{if(!b.disabled)start(ARTICLES[+b.dataset.h],{kind:'article',hard:true})});
-  box.querySelector('#longBtn').onclick=e=>{if(!e.currentTarget.disabled)start(LONG)};
+  box.querySelectorAll('.lv[data-i]').forEach(b=>b.onclick=()=>start(ARTICLES[+b.dataset.i]));
+  box.querySelectorAll('.lv[data-h]').forEach(b=>b.onclick=()=>start(ARTICLES[+b.dataset.h],{kind:'article',hard:true}));
+  box.querySelector('#longBtn').onclick=()=>start(LONG);
   box.querySelector('#dexBtn').onclick=showDex;box.querySelector('#achBtn').onclick=showAch;box.querySelector('#calBtn').onclick=()=>showCal();
   box.querySelector('#menuSound').onclick=e=>{$('#soundBtn').click();e.currentTarget.textContent=soundOn?'🔊 音あり':'🔇 音なし'};
   page.classList.add('lock');
@@ -986,63 +988,59 @@ function practiceEnd(ok,why,sec){
   stage.appendChild(box);box.querySelector('#prAgain').onclick=()=>practice(type);box.querySelector('#prBack').onclick=showDex;page.classList.add('lock');
 }
 /* ---------- とことん：記事を次々に読み、先へ進むほど広告が強くなる。閉じた広告の数を競う（自分の記録とだけ比べる） ---------- */
-// まちがって押す・ヒントを見るたびに🎫を1枚使う（3枚）。🎫が無いときにまちがえると感染しておしまい。今日の記録・連続・Ko-fi・ベスト・メダルには数えない（図鑑と閉じた数には入る）
+// まちがって押しても短い知らせだけで続く・ヒントは何度でも（チケットや回数の制限は無い。2026-11-06 satou さん「好きなだけ遊んでほしい」）。「ここで降りる」まで続き、記事を使い切ったら次の並びを足す。今日の記録・連続・Ko-fi・ベスト・メダルには数えない（図鑑と閉じた数には入る）
 const EKEY='xdoko-erun', ESTAGES=30;
 const ebest=()=>Number(store.get('xdoko-ebest')||0);
 function eRun(){const r=getJ(EKEY,null);return r&&Array.isArray(r.list)&&r.list.length&&Number.isInteger(r.i)&&r.i>=0&&r.i<r.list.length&&r.list.every(x=>x&&byId(x.id))&&!r.done?r:null}
 const saveE=()=>{if(E)store.set(EKEY,JSON.stringify(E))};
 // 段：1本目は★1（★1の種類で足りる記事から）、2本目は★2まで、3〜4本目は★3まで、5本目からは上級と同じ（★2〜3だけ）。記事は毎回ちがう順で、続けて同じ記事は出さない
-function endlessList(){const out=[];let last='';while(out.length<ESTAGES){const ids=shuffle(ARTICLES.map(a=>a.id));if(ids[0]===last)ids.push(ids.shift());if(!out.length)while(byId(ids[0]).ads>lvPool(1))ids.push(ids.shift());for(const id of ids){if(out.length>=ESTAGES)break;const i=out.length;out.push({id,lv:i===0?1:i===1?2:3,hard:i>=4})}last=out[out.length-1].id}return out}
+// from：続きに足すときの番号（そこから先の段で作る）、last：直前の記事（続けて同じ記事を出さない）。記事は1巡するまで同じ記事を出さない
+function endlessList(from=0,last=''){const out=[];while(out.length<ESTAGES){const ids=shuffle(ARTICLES.map(a=>a.id));if(ids[0]===last)ids.push(ids.shift());if(!from&&!out.length)while(byId(ids[0]).ads>lvPool(1))ids.push(ids.shift());for(const id of ids){if(out.length>=ESTAGES)break;const i=from+out.length;out.push({id,lv:i===0?1:i===1?2:3,hard:i>=4})}last=out[out.length-1].id}return out}
 const lvPool=l=>Object.keys(TYPES).filter(t=>TYPES[t].lv<=l).length;
 // 広告の数がその段の種類より多い記事は、選べる種類が足りるまで段を上げる（重ならないように選ぶため）
 function ecfgOf(s){const a=byId(s.id);if(s.hard)return hardOf(a);let l=s.lv;while(lvPool(l)<a.ads)l++;return {...a,lv:l}}
 function eSync(){hud();hintLbl();const q=$('#eQuit');if(E)q.textContent=`ここで降りる（${E.c}枚）`}
-function hintLbl(){const b=$('#hintBtn'),en=MODE.kind==='endless'&&E;b.disabled=!!(en&&E.tk<=0);b.textContent=en?(E.tk>0?`ヒント（🎫1枚・のこり${E.tk}）`:'ヒント（🎫がありません）'):'ヒント（+5秒）'}
+function hintLbl(){const b=$('#hintBtn'),en=MODE.kind==='endless'&&E;b.disabled=false;b.textContent=en?'ヒント（何度でも）':'ヒント（+5秒）'}
 function startEndless(fresh){
   let r=fresh?null:eRun();
-  if(!r){R=Math.random;r={list:endlessList(),i:0,c:0,c0:0,tk:3}}else if(Number.isInteger(r.c0))r.c=r.c0; // 続きからは、その記事の始めから（閉じた数も記事の始めに戻す。🎫は戻さない）
+  if(!r){R=Math.random;r={list:endlessList(),i:0,c:0,c0:0,m:0,h:0}}else if(Number.isInteger(r.c0))r.c=r.c0; // 続きからは、その記事の始めから（閉じた数も記事の始めに戻す。前の版のチケット tk は使わない）
   eStage(r);
 }
 function eStage(r){
   const s=r.list[r.i], c=ecfgOf(s);
   stop();E=r;A=byId(s.id);MODE={kind:'endless',cfg:c};n=0;hints=0;pen=0;used=[];SPL=[];QK=[];
   R=Math.random;
-  if(!Array.isArray(r.order)||r.order.length!==c.ads||r.order.some(t=>!TYPES[t]))r.order=pickOrder(c);
+  if(!Array.isArray(r.order)||r.order.length!==c.ads||r.order.some(t=>!TYPES[t])){r.order=freshOrder(s.id,c);remember(s.id,r.order)}
   r.c0=r.c;ORDER=r.order.slice();saveE();
   $('#virus').hidden=true;$('#panel').hidden=true;build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
   stage.className='';stage.hidden=false;stage.innerHTML='';
-  const box=el(`<div class="card" id="eCard"><h3 data-a11y-say>とことん ${r.i+1}本目</h3><p><b>${A.site}</b></p><p>広告${c.ads}枚・${s.hard?'難しい広告だけ':'★'+Math.min(3,c.lv)+'まで'}</p><p class="total">閉じた広告 <b>${r.c}枚</b>　🎫×${r.tk}　ベスト ${ebest()}枚</p><p class="total">まちがい・ヒントで🎫を1枚使う。🎫が無いときにまちがえると、おしまい</p>
+  const box=el(`<div class="card" id="eCard"><h3 data-a11y-say>とことん ${r.i+1}本目</h3><p><b>${A.site}</b></p><p>広告${c.ads}枚・${s.hard?'難しい広告だけ':'★'+Math.min(3,c.lv)+'まで'}</p><p class="total">閉じた広告 <b>${r.c}枚</b>　ベスト ${ebest()}枚</p><p class="total">まちがえても、そのまま続けられる。ヒントも何度でも</p>
    <div class="btns"><button class="big" id="go" type="button">スタート</button><button class="big btn2" id="eStop" type="button">ここで降りる</button></div></div>`);
   stage.appendChild(box);
   box.querySelector('#go').onclick=()=>{stage.innerHTML='';stage.hidden=true;page.classList.remove('lock');running=true;t0=performance.now();tick();SND.close();try{page.focus({preventScroll:true})}catch(e){}$('#eQuit').hidden=false;eSync();check()};
-  box.querySelector('#eStop').onclick=()=>eEnd(false);
+  box.querySelector('#eStop').onclick=()=>eEnd();
   page.classList.add('lock');
 }
 // 1本読み切った：次の記事へ（最後まで読み切ったら、おしまい）
 function eNext(){
   stop();SND.clear();hud();E.i++;E.order=null;E.c0=E.c;
-  if(E.i>=E.list.length)return eEnd(true);
+  if(E.i>=E.list.length){R=Math.random;E.list=E.list.concat(endlessList(E.list.length,E.list[E.list.length-1].id))} // 使い切ったら次の並びを足して続ける
   saveE();
   stage.className='';stage.hidden=false;stage.innerHTML='';
   const nx=E.list[E.i];
-  const box=el(`<div class="card"><h3 data-a11y-say>${E.i}本目を読み切った！</h3><p class="total">閉じた広告 <b>${E.c}枚</b>　🎫×${E.tk}</p><p>次は「${byId(nx.id).site}」${nx.hard?'・難しい広告だけ':''}</p>
+  const box=el(`<div class="card"><h3 data-a11y-say>${E.i}本目を読み切った！</h3><p class="total">閉じた広告 <b>${E.c}枚</b></p><p>次は「${byId(nx.id).site}」${nx.hard?'・難しい広告だけ':''}</p>
    <div class="btns"><button class="big" id="eNextBtn" type="button">次の記事へ</button><button class="big btn2" id="eStop" type="button">ここで降りる</button></div></div>`);
   stage.appendChild(box);
-  box.querySelector('#eNextBtn').onclick=()=>eStage(E);box.querySelector('#eStop').onclick=()=>eEnd(false);
+  box.querySelector('#eNextBtn').onclick=()=>eStage(E);box.querySelector('#eStop').onclick=()=>eEnd();
   page.classList.add('lock');
 }
 // 自己ベスト：保存の前に読み直し、大きいときだけ書く（別のタブの記録を下げない）
 function eRecord(){const c=E?E.c:0,b=ebest(),nb=c>b;if(nb)store.set('xdoko-ebest',String(c));if(E)store.set(EKEY,JSON.stringify({...E,done:1}));return {c,b,nb,i:E?E.i:0}}
 const eBestTxt=x=>x.nb?'🎉 自己ベスト更新！':`自己ベスト ${x.b}枚（あと ${x.b-x.c+1}枚で更新）`;
-function eOver(why,how){
-  if(!how)how=inAd&&TYPES[ORDER[n]]?'正しくは：'+TYPES[ORDER[n]].hint:'';
-  const x=eRecord();stop();bump('virus');SND.virus();
-  virus(why,`${how}<small id="eOverLine">とことん：閉じた広告 ${x.c}枚　${eBestTxt(x)}</small>`);
-}
-function eEnd(all){
-  const x=eRecord();stop();$('#panel').hidden=true;
+function eEnd(){
+  const m=E?E.m||0:0, h=E?E.h||0:0, x=eRecord();stop();$('#panel').hidden=true;
   stage.className='menu';stage.hidden=false;stage.innerHTML='';
-  const box=el(`<div class="card" id="eEnd"><h3 data-a11y-say>${all?'全部の記事を読み切った！':'とことん おしまい'}</h3><p class="ebest" id="eNum">閉じた広告 ${x.c}枚</p><p class="total">読み切った記事 ${x.i}本</p><p class="${x.nb?'achnew':'total'}" id="eBestLine">${eBestTxt(x)}</p>
+  const box=el(`<div class="card" id="eEnd"><h3 data-a11y-say>とことん おしまい</h3><p class="ebest" id="eNum">閉じた広告 ${x.c}枚</p><p class="total" id="eCounts">読み切った記事 ${x.i}本・まちがい ${m}回・ヒント ${h}回</p><p class="${x.nb?'achnew':'total'}" id="eBestLine">${eBestTxt(x)}</p>
    <div class="btns"><button class="big" id="eAgain" type="button">もう一度とことん</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div></div>`);
   stage.appendChild(box);box.querySelector('#eAgain').onclick=()=>startEndless(true);box.querySelector('#toMenu').onclick=menu;page.classList.add('lock');
 }
@@ -1056,9 +1054,9 @@ function fromLink(){
   if(a){start(a,{kind:'article',rival,seed:okSeed(seed)?seed:0,hard:q.get('h')==='1'&&!a.long});return true}
   return false;
 }
-$('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(!h||!h.hidden)return;const en=MODE.kind==='endless'&&E;if(en){if(E.tk<=0)return;E.tk--;saveE();eSync()}h.hidden=false;hints++;pen+=5;used[n]=true;toast(en?`🎫のこり${E.tk}枚`:'+5秒')};
+$('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(!h||!h.hidden)return;const en=MODE.kind==='endless'&&E;if(en){E.h=(E.h||0)+1;saveE()}h.hidden=false;hints++;if(!en)pen+=5;used[n]=true;if(!en)toast('+5秒')};
 $('#againBtn').onclick=()=>MODE.kind==='endless'?startEndless(true):start(A,again());
-$('#eQuit').onclick=()=>{if(MODE.kind==='endless')eEnd(false)};
+$('#eQuit').onclick=()=>{if(MODE.kind==='endless')eEnd()};
 $('#menuBtn').onclick=menu;
 if(!fromLink())menu();
 </script>
