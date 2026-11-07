@@ -892,6 +892,32 @@ if (browser) try {
     await p.close();
   }
 
+  // 6b. 使いやすさ（2026-11-07）：画面を替えたら上から見せる・結果のボタンの強弱・タイムを大きく・ベスト0は出さない
+  for (const [vw, vh] of [[390, 844], [320, 640]]) {
+    const p = await open({ unlock: false }); await p.setViewportSize({ width: vw, height: vh });
+    const home = await p.evaluate(() => { const r = document.querySelector("#dailyBtn").getBoundingClientRect(); return { bottom: r.bottom, sw: document.documentElement.scrollWidth }; });
+    check(`はじめての人：幅${vw}pxで「今日の1本」がはじめの画面に見え、横にはみ出さない`, home.bottom <= vh && home.sw <= vw, JSON.stringify(home));
+    // メニューの下の方（実績）から開いても、実績・カレンダー・図鑑は上から見える
+    const tops = [];
+    for (const id of ["#achBtn", "#calBtn", "#dexBtn"]) {
+      await p.evaluate(() => menu()); await p.evaluate(() => { const s = document.querySelector("#stage"); s.scrollTop = s.scrollHeight; });
+      await p.click(id); tops.push(await p.evaluate(() => document.querySelector("#stage").scrollTop));
+    }
+    check(`幅${vw}px：メニューの下から開いた実績・カレンダー・図鑑は上から見える（前の画面の位置を持ち越さない）`, tops.every((t) => t === 0), JSON.stringify(tops));
+    // 結果の画面：タイムが大きい（カードは出るときに少し拡大するので、大きさは変形の影響を受けない offset で測る）・いちばん押すボタンは幅いっぱい・ほかは枠だけで2つずつ（ひとつだけ残らない）
+    const res = await p.evaluate(() => { menu(); start(ARTICLES[0]); running = true; t0 = performance.now() - 30000; pen = 0; finish();
+      const s = document.querySelector("#stage"), card = s.querySelector(".card"), tb = card.querySelector("#rTime b"), bs = [...card.querySelectorAll(".btns > .big")].map((b) => { const cs = getComputedStyle(b); return { id: b.id, w: b.offsetWidth, h: b.offsetHeight, top: b.offsetTop, bg: cs.backgroundColor }; });
+      return { top: s.scrollTop, fs: tb ? parseFloat(getComputedStyle(tb).fontSize) : 0, nb: !!card.querySelector("#rTime .nb"), bs, cw: card.querySelector(".btns").clientWidth, sw: document.documentElement.scrollWidth }; });
+    const [first, ...rest] = res.bs;
+    check(`幅${vw}px：結果のタイムは大きな数字（32px以上）で、自己ベストは印で出る`, res.fs >= 32 && res.nb, JSON.stringify({ fs: res.fs, nb: res.nb }));
+    check(`幅${vw}px：結果の画面は上から見え、いちばん押すボタン（次の記事へ）が幅いっぱい、ほかは同じ段に2つ（高さ44px以上・横にはみ出さない）`,
+      res.top === 0 && first.id === "nextArt" && first.w >= res.cw - 2 && rest.length === 2 && rest[0].top === rest[1].top && rest[0].bg !== first.bg && res.bs.every((b) => b.h >= 44) && res.sw <= vw, JSON.stringify(res));
+    // とことん：まだベストが無いときは「ベスト 0枚」を出さない。降りるボタンはスタートより控えめ
+    const ec = await p.evaluate(() => { localStorage.removeItem("xdoko-ebest"); localStorage.removeItem("xdoko-erun"); menu(); document.querySelector("#go-e").click(); const c = document.querySelector("#eCard"); const go = c.querySelector("#go"), st = c.querySelector("#eStop"); return { txt: c.textContent, goBg: getComputedStyle(go).backgroundColor, stBg: getComputedStyle(st).backgroundColor, stCol: getComputedStyle(st).color }; });
+    check(`幅${vw}px：とことんのはじめにベストが無ければ「ベスト 0枚」を出さず、「ここで降りる」は枠だけのボタン`, !ec.txt.includes("ベスト 0枚") && ec.goBg !== ec.stBg, JSON.stringify(ec));
+    await p.close();
+  }
+
   // 7. 外へ通信しない（Google Fonts の文字だけ）・PWA で電波が無くても開ける
   {
     let fail5xx = false, served5xx = 0;

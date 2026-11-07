@@ -130,6 +130,15 @@ button:focus-visible,[role=button]:focus-visible{outline:3px solid var(--sky);ou
 .sendbox[open] summary::after{content:'▴'}
 .btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .btn2{background:var(--ink)}
+/* カードの下のボタン：いちばん押してほしいものを幅いっぱいに、ほかは枠だけで2つ並べる（ひとつだけ残らない） */
+.card .btns{gap:10px;margin-top:14px}
+.card .btns>.big{flex:1 1 40%;margin:0;min-height:48px}
+.card .btns>.big:not(.btn2){flex-basis:100%}
+.card .btns>.btn2{background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+/* 結果のタイムは大きく */
+.rtime{margin:10px 0 4px}
+.rtime b{display:block;font:400 40px/1.15 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.rtime .nb{display:inline-block;margin-top:4px;padding:2px 10px;border-radius:999px;background:var(--hot);color:#fff;font-weight:800;font-size:13px}
 .total{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .how{display:flex;justify-content:center;gap:6px;margin:12px 0 2px;font-size:12px;color:var(--muted);font-weight:700}
 .how span{flex:1;background:var(--paper);border-radius:8px;padding:8px 4px;line-height:1.4}
@@ -836,9 +845,9 @@ function finish(){
   const S=shareInfo(t), full=S.text+'\n'+S.url;
   // 相手のタイムはリンクで0.1秒に丸めてあるので、こちらも時計と同じ toFixed(1) で丸めてから比べる（同じ表示なのに負けにしない）
   let vs='';if(MODE.rival){const r=MODE.rival,tr=Number(t.toFixed(1)),df=Math.round(Math.abs(r-tr)*10)/10,res=tr<r?'won':tr>r?'lost':'tie';if(res==='won'&&!oldRun())store.set('xdoko-won','1');vs=`<div class="vs"><span>挑戦状の相手<b>${fmt(r)}</b></span><span>あなた<b>${fmt(tr)}</b></span></div><p class="${res==='lost'?'lost':'won'}">${res==='won'?'勝ち！ 相手より '+fmt(df)+' 速い':res==='tie'?'同タイム！ 引き分け':'あと '+fmt(df)+'。もう一度いける'}</p>`}
-  stage.className='';stage.hidden=false;stage.innerHTML='';
+  stage.className='';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const st=MODE.kind==='daily'&&!MODE.late&&!MODE.old&&MODE.day===today()?shownStreak():0, fresh=ACH.filter(x=>achGot().includes(x[0])&&!had.includes(x[0]));
-  const box=el(`<div class="card"><h3 data-a11y-say>読み切った！</h3><p data-a11y-say>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p>タイム <b>${fmt(t)}</b>${MODE.old?'　（7日より前の日なので記録には残りません）':nb?'　自己ベスト！':'　（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p><p class="total" id="quickLine">⚡ 見切り ${qk}/${N}枚${qk===N?'　全部見切った！':''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
+  const box=el(`<div class="card"><h3 data-a11y-say>読み切った！</h3><p data-a11y-say>${S.title}</p><p class="grid" aria-label="広告ごとの結果">${S.grid}</p><p class="rtime" id="rTime">タイム <b>${fmt(t)}</b>${MODE.old?'（7日より前の日なので記録には残りません）':nb?'<span class="nb">自己ベスト！</span>':'（ベスト '+fmt(b)+'）'}</p><p class="medal">${md} ${md==='🥇'?'金メダル':md==='🥈'?'銀メダル':'銅メダル'}${nm?`<small style="display:block;color:var(--muted)">${nm}（金は ${fmt(goldOf(A,MODE.hard))} 以内）</small>`:''}</p><p class="total" id="quickLine">⚡ 見切り ${qk}/${N}枚${qk===N?'　全部見切った！':''}</p>${st>1?`<p class="total">🔥 ${st}日連続で読み切った</p>`:''}${fresh.length?`<p class="achnew" id="achNew">🏅 実績：${fresh.map(x=>x[1]).join('・')}</p>`:''}${vs}
    <div class="btns">${MODE.kind==='daily'?`<button class="big" id="go-e" type="button">続けて遊ぶ：とことん（ベスト ${ebest()}枚）</button>`:''}${next?'<button class="big" id="nextArt" type="button">次の記事へ</button>':''}<button class="big btn2" id="againRun" type="button">もう一度</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div>
    <p class="sec">結果を送る・挑戦状にする</p>
    <div class="sharebtns">${navigator.share?'<button class="prim" id="shareBtn" type="button">結果を送る</button>':''}<a id="xBtn" target="_blank" rel="noopener">X に投稿</a><a id="lineBtn" target="_blank" rel="noopener">LINE で送る</a><button id="copyBtn" type="button" style="grid-column:1/-1">結果をコピー</button></div>
@@ -866,7 +875,7 @@ function start(a,mode={kind:'article'}){
   R=seeded(mode.kind==='daily'?mode.day:mode.seed);
   ORDER=pickOrder(cfg());if(mode.kind==='article')remember(a.id,ORDER);$('#virus').hidden=true;$('#panel').hidden=true;
   build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
-  stage.className='';stage.hidden=false;stage.innerHTML='';
+  stage.className='';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const label=mode.kind==='daily'?(mode.late?`${mdOf(mode.day)}の1本（あとから）`:mode.old?`#${mode.day}の1本（記録に残りません）`:`今日の1本 #${mode.day}${mode.hard?' 上級の日':''}`):a.long?'ロング（3本つなぎ）':`記事${ARTICLES.indexOf(a)+1}${mode.hard?' 上級':''}`;
   const b=mode.kind==='daily'?(mode.late?lateBest(mode.day):dBest(mode.day)):mode.hard?bestH(a.id):best(a.id);
   const box=el(`<div class="card"><h3 data-a11y-say>${label}</h3><p><b>${a.site}</b></p>${mode.rival?`<div class="letter">挑戦状：相手のタイムは <b>${fmt(mode.rival)}</b></div>`:''}<p>最後まで読めばゴール。広告は${cfg().ads}枚。${mode.hard?'<br><b style="color:var(--hot)">上級：難しい広告だけが出る。ヒントは使えない。</b>':''}<br>本物の×だけを押そう。すばやく閉じると ⚡見切り。</p>${mode.kind==='daily'?`<p class="total">${mode.late?`#${mode.day}${mode.hard?' 上級の日':''}・その日と同じ広告の並び。カレンダーに残ります（連続には数えません）`:'今日はだれが遊んでも同じ広告の並び'}</p>`:''}
@@ -889,7 +898,7 @@ function nextGoal(){
 }
 function menu(){
   stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
-  stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
   const box=el(`<div class="card"><h3><b>×</b>はどこだ</h3><p data-a11y-say>広告をよけて、記事を最後まで読もう。<br>まちがえて押すと…<b style="color:var(--hot)">ウイルスに感染</b>。</p>
    <div class="how" aria-label="遊び方"><span><b>📖</b>下へ読む</span><span><b>✕</b>本物の×だけ押す</span><span><b>⏱</b>速さを競う</span></div>
@@ -921,7 +930,7 @@ function menu(){
 }
 // 広告図鑑：閉じたことのある広告の名前と閉じ方。まだの広告は難しさだけ見せる。下に記録
 function showDex(){
-  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const d=dex(), st=stats(), ks=Object.keys(TYPES), got=ks.filter(k=>d[k]).length, s=streak();
   const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
   const box=el(`<div class="card"><h3 data-a11y-say>広告図鑑 ${got}/${ks.length}</h3><p>${got===ks.length?'全部の広告を見つけた！':'閉じた広告がここに残ります。'}${got?'<br>「練習」で、時間を気にせず何度でも試せます。':''}</p>
@@ -933,7 +942,7 @@ function showDex(){
 }
 // 実績の画面：取れたものと、まだのもの（条件と進み具合）
 function showAch(){
-  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const g=achGot();
   const row=x=>{const ok=g.includes(x[0]);let pr='';if(!ok&&x[4]){try{const [a,b]=x[4]();pr=`<i>${a}/${b}</i><span class="bar"><u style="width:${Math.round(Math.min(1,a/b)*100)}%"></u></span>`}catch(e){}}
     return `<div${ok?'':' class="no"'} data-ach="${x[0]}"><span aria-hidden="true">🏅</span><span><b>${x[1]}</b>${x[2]}</span>${ok?'<i>✓</i>':pr}</div>`};
@@ -949,7 +958,7 @@ function startLate(d){
   start(dailyArt(d),{...dailyMode(d),late:true});
 }
 function showCal(off=0){
-  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const t=today(), td=dayDate(t), y0=td.getUTCFullYear(), m0=td.getUTCMonth()-off, first=new Date(Date.UTC(y0,m0,1)), y=first.getUTCFullYear(), m=first.getUTCMonth();
   const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate(), wd=first.getUTCDay(), miss=lateDays(t), st=shownStreak(), canPrev=dayOf(y,m,1)>1;
   let cells='';for(let i=0;i<wd;i++)cells+='<span></span>';
@@ -981,7 +990,7 @@ function practice(type){
 }
 function practiceEnd(ok,why,sec){
   const type=MODE.type,T=TYPES[type];if(ok)SND.close();stop();$('#panel').hidden=true;
-  stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const box=el(`<div class="card"><h3 data-a11y-say>${ok?'閉じられた！':'それは広告の一部でした'}</h3><p><b>${T.name}</b> <small>${'★'.repeat(T.lv)}</small></p>${ok?'':'<p class="lost" id="prWhy"></p>'}<p>閉じ方：${T.hint}</p>${ok&&typeof sec==='number'?`<p id="prTime">閉じるまで ${fmt(sec)}${sec<=quickLim(type)?'　⚡ 見切り！':`（⚡見切りは ${fmt(quickLim(type))} 以内）`}</p>`:''}<p class="total">練習なので、時間も記録も残りません</p>
    <div class="btns"><button class="big" id="prAgain" type="button">もう一度</button><button class="big btn2" id="prBack" type="button">図鑑へ</button></div></div>`);
   if(!ok)box.querySelector('#prWhy').textContent=why||'';
@@ -1013,8 +1022,8 @@ function eStage(r){
   if(!Array.isArray(r.order)||r.order.length!==c.ads||r.order.some(t=>!TYPES[t])){r.order=freshOrder(s.id,c);remember(s.id,r.order)}
   r.c0=r.c;ORDER=r.order.slice();saveE();
   $('#virus').hidden=true;$('#panel').hidden=true;build();page.scrollTop=0;$('#clock').textContent=fmt(0);hud();
-  stage.className='';stage.hidden=false;stage.innerHTML='';
-  const box=el(`<div class="card" id="eCard"><h3 data-a11y-say>とことん ${r.i+1}本目</h3><p><b>${A.site}</b></p><p>広告${c.ads}枚・${s.hard?'難しい広告だけ':'★'+Math.min(3,c.lv)+'まで'}</p><p class="total">閉じた広告 <b>${r.c}枚</b>　ベスト ${ebest()}枚</p><p class="total">まちがえても、そのまま続けられる。ヒントも何度でも</p>
+  stage.className='';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
+  const box=el(`<div class="card" id="eCard"><h3 data-a11y-say>とことん ${r.i+1}本目</h3><p><b>${A.site}</b></p><p>広告${c.ads}枚・${s.hard?'難しい広告だけ':'★'+Math.min(3,c.lv)+'まで'}</p><p class="total">閉じた広告 <b>${r.c}枚</b>${ebest()?'　ベスト '+ebest()+'枚':''}</p><p class="total">まちがえても、そのまま続けられる。ヒントも何度でも</p>
    <div class="btns"><button class="big" id="go" type="button">スタート</button><button class="big btn2" id="eStop" type="button">ここで降りる</button></div></div>`);
   stage.appendChild(box);
   box.querySelector('#go').onclick=()=>{stage.innerHTML='';stage.hidden=true;page.classList.remove('lock');running=true;t0=performance.now();tick();SND.close();try{page.focus({preventScroll:true})}catch(e){}$('#eQuit').hidden=false;eSync();check()};
@@ -1026,7 +1035,7 @@ function eNext(){
   stop();SND.clear();hud();E.i++;E.order=null;E.c0=E.c;
   if(E.i>=E.list.length){R=Math.random;E.list=E.list.concat(endlessList(E.list.length,E.list[E.list.length-1].id))} // 使い切ったら次の並びを足して続ける
   saveE();
-  stage.className='';stage.hidden=false;stage.innerHTML='';
+  stage.className='';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const nx=E.list[E.i];
   const box=el(`<div class="card"><h3 data-a11y-say>${E.i}本目を読み切った！</h3><p class="total">閉じた広告 <b>${E.c}枚</b></p><p>次は「${byId(nx.id).site}」${nx.hard?'・難しい広告だけ':''}</p>
    <div class="btns"><button class="big" id="eNextBtn" type="button">次の記事へ</button><button class="big btn2" id="eStop" type="button">ここで降りる</button></div></div>`);
@@ -1039,7 +1048,7 @@ function eRecord(){const c=E?E.c:0,b=ebest(),nb=c>b;if(nb)store.set('xdoko-ebest
 const eBestTxt=x=>x.nb?'🎉 自己ベスト更新！':`自己ベスト ${x.b}枚（あと ${x.b-x.c+1}枚で更新）`;
 function eEnd(){
   const m=E?E.m||0:0, h=E?E.h||0:0, x=eRecord();stop();$('#panel').hidden=true;
-  stage.className='menu';stage.hidden=false;stage.innerHTML='';
+  stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const box=el(`<div class="card" id="eEnd"><h3 data-a11y-say>とことん おしまい</h3><p class="ebest" id="eNum">閉じた広告 ${x.c}枚</p><p class="total" id="eCounts">読み切った記事 ${x.i}本・まちがい ${m}回・ヒント ${h}回</p><p class="${x.nb?'achnew':'total'}" id="eBestLine">${eBestTxt(x)}</p>
    <div class="btns"><button class="big" id="eAgain" type="button">もう一度とことん</button><button class="big btn2" id="toMenu" type="button">メニュー</button></div></div>`);
   stage.appendChild(box);box.querySelector('#eAgain').onclick=()=>startEndless(true);box.querySelector('#toMenu').onclick=menu;page.classList.add('lock');
