@@ -1,3 +1,4 @@
 qa/node_modules/
 qa-report/
 .tools/
+qa/.setup-lock*

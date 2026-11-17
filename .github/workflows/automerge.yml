@@ -29,5 +29,5 @@ jobs:
         scan / scan
       # PWA の仕組み（sw.js・manifest）を変える PR は自動ではマージせず、CodeRabbit のレビューを読んでから手でマージ
       hold_paths: '^(sw\.js|manifest\.webmanifest)$'
-      dispatch: qa.yml
+      dispatch: qa.yml secret-scan.yml
       recheck_main: false
