@@ -440,7 +440,7 @@ html.a11y-say body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!i
 // ゲームの共通部品 game-core。ひな形: satou-aaaaa/shared-workflows の template/core/core.js。
 // ゲームでは直さない。index.html の core:begin〜core:end の印のあいだに node scripts/sync-template.mjs <ゲームのフォルダ> で写す
 // （ファイルを足さないので sw.js の SHELL は変えない）。ゲームからは window.Core で使う。
-// 共通部品の版: 3
+// 共通部品の版: 4
 //   1: 2026-11-21 ゲームごとに手で写していた小さな関数を1か所に集めた。40本で同じ役目の関数が何通りにも分かれ
 //      （お知らせの帯 11通り・振動 10通り・文字を安全にする esc 4通り・数の読み込み num 2通り）、
 //      「動きを減らす」でも振動する・お知らせが読み上げられない・num の直し（#410）が22本に届かない・esc が " を変えない、が起きていた
@@ -450,6 +450,10 @@ html.a11y-say body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!i
 //   3: 2026-11-22 吹き出しを出しているあいだ 0.4 秒ごとに場所を測り直す（古い場所に残って押す所を隠すことがあった）。ボタンの字を「案内を閉じる」に。
 //      段の wait（その所が出るまで待つ）を足した。全ゲームの「はじめての練習」を sync-template の migrateFirstPlay が足すため
 //   2: 2026-11-22 感想フォームのゲーム名を、渡さなければ題（<title>）から入れる。sync-template が全ゲームを game-core に切り替える（migrateCore）ため
+//   4: 2026-11-23 画面の切り替え（Core.screens）を足した。1ページに全部を縦に積んで見づらくなるのを、単体の HTML のまま
+//      URL の #（例 #kiroku）で画面を分けて止める（routines/ui-rules.md U10〜U12。NN/g「Progressive Disclosure」・Android「Layouts and navigation patterns」）。
+//      <section data-screen="home">〜 を置いたページだけで動く（置いていないゲームでは何もしない）
+//      JS で描き替えるゲームは、画面の関数の最初で Core.screens.mark("dex")、起動時に Core.screens.route({...}, home) で「戻る」がホームへ戻る
 // 決まり: 外へ通信しない。ゲームの関数の名前（toast・buzz など）は上書きしない（Core.toast などで呼ぶ）。
 (function () {
   "use strict";
@@ -645,6 +649,103 @@ html.a11y-say body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!i
     return { start, stop, leave, active: () => !!steps, step: () => (steps ? i : -1) };
   })();
 
+  // ---- 画面の切り替え（1つの HTML を # で画面に分ける。routines/ui-rules.md U10〜U12）----
+  // 書き方: <section data-screen="home" data-title="ホーム">…</section><section data-screen="kiroku" data-title="記録" hidden>…</section>
+  //         入口は <a href="#kiroku">記録</a>。戻るボタン・ブラウザの「戻る」で前の画面へ戻る。最初の data-screen がホーム。
+  // 画面が変わると、その画面の最初の見出しへフォーカスを移し（読み上げのため）、上までもどし、"core:screen" を知らせる（detail.id）。
+  // ゲームから: Core.screens.go("kiroku")・Core.screens.now()・Core.screens.list()
+  // screens.js（単体の部品）を先に読んだページでは、それを使う（2回つながない）
+  const screens = window.Screens || (function () {
+    // screens:begin（template/screens/screens.js と同じ中身。check-core が比べる。直すときは両方を同じに）
+    const all = () => (doc.querySelectorAll ? [...doc.querySelectorAll("[data-screen]")] : []);
+    const ids = () => all().map((e) => e.getAttribute("data-screen"));
+    let cur = "";
+    let baseTitle = "";
+    function want() {
+      let h = "";
+      try { h = decodeURIComponent((location.hash || "").slice(1)); } catch (e) { h = ""; }
+      const list = ids();
+      return list.includes(h) ? h : list[0] || "";
+    }
+    function show(id, first) {
+      const list = all();
+      if (!list.length) return;
+      const el = list.find((e) => e.getAttribute("data-screen") === id) || list[0];
+      id = el.getAttribute("data-screen");
+      for (const e of list) e.hidden = e !== el;
+      const t = el.getAttribute("data-title");
+      if (!baseTitle) baseTitle = doc.title;
+      doc.title = t && id !== list[0].getAttribute("data-screen") ? `${t}｜${baseTitle}` : baseTitle;
+      const changed = cur !== id;
+      cur = id;
+      if (!changed || first) { if (changed) fire(id); return; }
+      try { scrollTo(0, 0); } catch (e) { /* 古いブラウザ */ }
+      const h = el.querySelector("h1,h2,[data-screen-focus]");
+      if (h) { if (!h.hasAttribute("tabindex")) h.setAttribute("tabindex", "-1"); try { h.focus({ preventScroll: true }); } catch (e) { /* 無視 */ } }
+      fire(id);
+    }
+    function fire(id) { try { doc.dispatchEvent(new CustomEvent("core:screen", { detail: { id } })); } catch (e) { /* 古いブラウザ */ } }
+    function go(id) {
+      if (!ids().includes(id)) return;
+      if (want() === id) return show(id);
+      location.hash = id === ids()[0] ? "" : id; // ホームは # を付けない（共有したURLがホームになる）
+    }
+    function init() {
+      if (!all().length) return;
+      // ゲームの CSS が section に display を書いていても、隠した画面は出さない
+      const st = doc.createElement("style");
+      st.textContent = "[data-screen][hidden]{display:none!important}";
+      doc.head.appendChild(st);
+      addEventListener("hashchange", () => show(want()));
+      show(want(), true);
+    }
+    if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", init); else init();
+    // ---- JS で描き替える画面（ゲームの帳・カレンダー・実績など）を # と「戻る」につなぐ ----
+    // ゲームは画面を app.innerHTML で描き替えるので、そのままでは「戻る」でゲームから出てしまう。
+    // 使い方: 画面を描く関数の最初で Core.screens.mark("dex")（ホームは mark("")）。起動時に一度
+    //         Core.screens.route({ dex: book, cal: () => cal(), ach: achView }, home)。
+    // 履歴はいつも [ホーム] か [ホーム, #画面] の2つまで（画面から画面へは置き換え、ホームへは戻す）。開き直すとホームから。
+    const views = new Map(); // Map にする（# から来た名前で Object の関数を呼ばない。CodeQL js/unvalidated-dynamic-method-call）
+    let homeFn = null, pushed = false, skipPop = 0, quiet = false;
+    const hashName = () => { try { return decodeURIComponent((location.hash || "").slice(1)); } catch (e) { return ""; } };
+    const bare = () => location.pathname + location.search;
+    // # が画面の名前でないとき（引き継ぎの #hk=… など、ほかの部品の印）は触らない
+    const foreign = () => { const h = hashName(); return !!h && !/^[A-Za-z][\w-]*$/.test(h); };
+    function mark(name) {
+      if (quiet || all().length || !homeFn) return; // data-screen のページ・route の前・戻るで描いている最中は何もしない
+      name = name || "";
+      if (foreign()) return;
+      const now = hashName();
+      if (now === name) return;
+      try {
+        if (!name) {
+          if (pushed) { pushed = false; skipPop++; history.back(); } else history.replaceState(null, "", bare());
+        } else if (!now) { history.pushState(null, "", "#" + encodeURIComponent(name)); pushed = true; }
+        else history.replaceState(null, "", "#" + encodeURIComponent(name));
+      } catch (e) { /* 使えない */ }
+      fire(name || "home");
+    }
+    function onPop() {
+      if (skipPop) { skipPop--; return; }
+      if (foreign()) return;
+      const h = hashName();
+      const fn = (h && views.get(h)) || homeFn;
+      if (!h || !views.has(h)) pushed = false;
+      quiet = true;
+      try { if (fn) fn(); } finally { quiet = false; }
+    }
+    function route(map, home) {
+      if (all().length) return;
+      for (const k of Object.keys(map || {})) if (typeof map[k] === "function") views.set(k, map[k]);
+      // 何度呼んでもよい（ゲームの home() の最初で呼ぶ）。# を消すのは最初の1回だけ（開き直したらホームから。途中の回は続きから出る）
+      if (!homeFn) { addEventListener("popstate", onPop); if (hashName() && !foreign()) try { history.replaceState(null, "", bare()); } catch (e) { /* 使えない */ } }
+      homeFn = home;
+    }
+    return { go, now: () => cur, list: ids, show: (id) => show(id), mark, route };
+    // screens:end
+  })();
+  window.Screens = screens;
+
   // ---- 感想・不具合のフォーム（全ゲームで1つの Googleフォーム。事前入力のリンクでゲーム名と付属情報を入れる）----
   // 送る人が入力するのは「内容」の1か所だけ（必須はそれだけ）。名前・メール・遊んだ記録の中身は入れない。
   // 付属情報はフォームに見える形で入り、送る前に本人が消せる。フォームの entry 番号は Googleフォームの「事前入力した URL を取得」で確かめたもの
@@ -706,7 +807,7 @@ html.a11y-say body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))!i
     }, true);
   }
 
-  window.Core = { v: 3, calm, esc, num, jstNow, today, addDays, prevDay, nextDay, md, dayNo, ymOf, ymAdd, untilNext, streak, say, toast, buzz, saveWarn, coach, feedbackUrl, feedbackInfo, bindFeedback };
+  window.Core = { v: 4, calm, esc, num, jstNow, today, addDays, prevDay, nextDay, md, dayNo, ymOf, ymAdd, untilNext, streak, say, toast, buzz, saveWarn, coach, feedbackUrl, feedbackInfo, bindFeedback, screens };
 })();
 </script>
 <!-- core:end -->
@@ -1127,6 +1228,7 @@ function shareInfo(t){
 }
 function finish(){
   if(MODE.kind==='endless')return eNext();
+  Core.screens.mark('result');
   // 0時をまたいで読み切った今日の1本は、その日にまだ記録が無ければ「あとから」に入れる（★・連続に数えない）
   if(MODE.kind==='daily'&&MODE.day<today()-7)MODE={...MODE,late:false,old:true}; // 遊ぶあいだに7日を過ぎた日も、記録に残さない
   if(MODE.kind==='daily'&&!MODE.late&&!MODE.old&&MODE.day!==today()&&!dBest(MODE.day))MODE={...MODE,late:true};
@@ -1173,6 +1275,7 @@ const okSeed=s=>Number.isInteger(s)&&s>=1&&s<2147483647;
 // もう一度：今日の1本と挑戦状は同じ並び、ふつうの記事は新しい並び
 const again=()=>MODE.kind==='article'&&!MODE.rival?{kind:'article',hard:!!MODE.hard}:MODE;
 function start(a,mode={kind:'article'}){
+  Core.screens.mark('play');
   if(mode.kind==='article'&&!okSeed(mode.seed)){const rc=recentOf(a.id), c=mode.hard?hardOf(a):a;let sd=newSeed();for(let k=0;k<40;k++){R=seeded(sd);if(!rc.includes(pickOrder(c).join()))break;sd=newSeed()}mode={...mode,seed:sd}} // 最近遊んだ並びにならない番号を選ぶ（挑戦状の番号はそのまま）
   stop();A=a;MODE=mode;n=0;hints=0;pen=0;used=[];SPL=[];QK=[];
   R=seeded(mode.kind==='daily'?mode.day:mode.seed);
@@ -1200,6 +1303,7 @@ function nextGoal(){
   return null;
 }
 function menu(){
+  Core.screens.route({},menu);Core.screens.mark(''); // スマホの「戻る」でゲームから出ずにメニューへ（共通部品 game-core）
   stop();MODE={kind:'article'};$('#virus').hidden=true;$('#panel').hidden=true;$('#anchor').hidden=true;$('#appbarSlot').innerHTML='';$('#art').innerHTML='';$('#clock').textContent=fmt(0);hud();
   stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const all=ARTICLES.every(a=>cleared(a.id)), sum=ARTICLES.reduce((s,a)=>s+best(a.id),0), d=today(), db=dBest(d), st=shownStreak();
@@ -1233,6 +1337,7 @@ function menu(){
 }
 // 広告図鑑：閉じたことのある広告の名前と閉じ方。まだの広告は難しさだけ見せる。下に記録
 function showDex(){
+  Core.screens.mark('dex');
   stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const d=dex(), st=stats(), ks=Object.keys(TYPES), got=ks.filter(k=>d[k]).length, s=streak();
   const medals=ARTICLES.reduce((m,a)=>{[[best(a.id),false],[bestH(a.id),true]].forEach(([t,h])=>{const x=medal(t,a,h);if(x)m[x]=(m[x]||0)+1});return m},{});
@@ -1245,6 +1350,7 @@ function showDex(){
 }
 // 実績の画面：取れたものと、まだのもの（条件と進み具合）
 function showAch(){
+  Core.screens.mark('ach');
   stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const g=achGot();
   const row=x=>{const ok=g.includes(x[0]);let pr='';if(!ok&&x[4]){try{const [a,b]=x[4]();pr=`<i>${a}/${b}</i><span class="bar"><u style="width:${Math.round(Math.min(1,a/b)*100)}%"></u></span>`}catch(e){}}
@@ -1261,6 +1367,7 @@ function startLate(d){
   start(dailyArt(d),{...dailyMode(d),late:true});
 }
 function showCal(off=0){
+  Core.screens.mark('cal');
   stop();$('#virus').hidden=true;$('#panel').hidden=true;stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const t=today(), td=dayDate(t), y0=td.getUTCFullYear(), m0=td.getUTCMonth()-off, first=new Date(Date.UTC(y0,m0,1)), y=first.getUTCFullYear(), m=first.getUTCMonth();
   const dim=new Date(Date.UTC(y,m+1,0)).getUTCDate(), wd=first.getUTCDay(), miss=lateDays(t), st=shownStreak(), canPrev=dayOf(y,m,1)>1;
@@ -1287,11 +1394,13 @@ function showCal(off=0){
 // 練習：図鑑で見つけた広告を1枚だけ試す。時間も記録（ベスト・図鑑・記録）も残さない。まちがえても感染の画面は出さず、閉じ方を見せる
 function practice(type){
   if(!TYPES[type])return showDex();
+  Core.screens.mark('practice');
   stop();MODE={kind:'practice',type};A=null;ORDER=[type];n=0;used=[];SPL=[];V=-1;pen=0;$('#virus').hidden=true;$('#clock').textContent=fmt(0);
   openAd(true);
   const tag=document.createElement('p');tag.className='practice';tag.textContent=`練習：${TYPES[type].name}（時間も記録も残らない）`;stage.appendChild(tag);
 }
 function practiceEnd(ok,why,sec){
+  Core.screens.mark('practice');
   const type=MODE.type,T=TYPES[type];if(ok)SND.close();stop();$('#panel').hidden=true;
   stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const box=el(`<div class="card"><h3 data-a11y-say>${ok?'閉じられた！':'それは広告の一部でした'}</h3><p><b>${T.name}</b> <small>${'★'.repeat(T.lv)}</small></p>${ok?'':'<p class="lost" id="prWhy"></p>'}<p>閉じ方：${T.hint}</p>${ok&&typeof sec==='number'?`<p id="prTime">閉じるまで ${fmt(sec)}${sec<=quickLim(type)?'　⚡ 見切り！':`（⚡見切りは ${fmt(quickLim(type))} 以内）`}</p>`:''}<p class="total">練習なので、時間も記録も残りません</p>
@@ -1319,6 +1428,7 @@ function startEndless(fresh){
   eStage(r);
 }
 function eStage(r){
+  Core.screens.mark('endless');
   const s=r.list[r.i], c=ecfgOf(s);
   stop();E=r;A=byId(s.id);MODE={kind:'endless',cfg:c};n=0;hints=0;pen=0;used=[];SPL=[];QK=[];
   R=Math.random;
@@ -1335,6 +1445,7 @@ function eStage(r){
 }
 // 1本読み切った：次の記事へ（最後まで読み切ったら、おしまい）
 function eNext(){
+  Core.screens.mark('endless');
   stop();SND.clear();hud();E.i++;E.order=null;E.c0=E.c;
   if(E.i>=E.list.length){R=Math.random;E.list=E.list.concat(endlessList(E.list.length,E.list[E.list.length-1].id))} // 使い切ったら次の並びを足して続ける
   saveE();
@@ -1350,6 +1461,7 @@ function eNext(){
 function eRecord(){const c=E?E.c:0,b=ebest(),nb=c>b;if(nb)store.set('xdoko-ebest',String(c));if(E)store.set(EKEY,JSON.stringify({...E,done:1}));return {c,b,nb,i:E?E.i:0}}
 const eBestTxt=x=>x.nb?'🎉 自己ベスト更新！':`自己ベスト ${x.b}枚（あと ${x.b-x.c+1}枚で更新）`;
 function eEnd(){
+  Core.screens.mark('endless');
   const m=E?E.m||0:0, h=E?E.h||0:0, x=eRecord();stop();$('#panel').hidden=true;
   stage.className='menu';stage.hidden=false;stage.innerHTML='';stage.scrollTop=0;
   const box=el(`<div class="card" id="eEnd"><h3 data-a11y-say>とことん おしまい</h3><p class="ebest" id="eNum">閉じた広告 ${x.c}枚</p><p class="total" id="eCounts">読み切った記事 ${x.i}本・まちがい ${m}回・ヒント ${h}回</p><p class="${x.nb?'achnew':'total'}" id="eBestLine">${eBestTxt(x)}</p>
@@ -1370,6 +1482,7 @@ $('#hintBtn').onclick=()=>{const h=$('#hintTxt');if(!h||!h.hidden)return;const e
 $('#againBtn').onclick=()=>MODE.kind==='endless'?startEndless(true):start(A,again());
 $('#eQuit').onclick=()=>{if(MODE.kind==='endless')eEnd()};
 $('#menuBtn').onclick=menu;
+Core.screens.route({},menu); // 挑戦状のリンクで始めたときも「戻る」でメニューへ
 if(!fromLink())menu();
 </script>
 <script>

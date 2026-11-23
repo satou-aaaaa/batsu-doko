@@ -947,6 +947,17 @@ if (browser) try {
     } finally { await ctx.close(); server.close(); }
   }
 
+  { // スマホのブラウザの「戻る」で、ゲームから出ずにメニューへ（共通部品 game-core の Core.screens）
+    const p = await open(); const home0 = p.url(), got = [];
+    for (const [btn, wait] of [["#dexBtn", "#dexBack"], ["#calBtn", "#calBack"], ["#achBtn", "#achBack"], ["#dailyBtn", "#go"]]) {
+      await p.click(btn); await p.waitForSelector(wait); const h = await p.evaluate(() => location.hash);
+      await p.goBack(); await p.waitForSelector("#dailyBtn", { state: "visible" });
+      got.push({ btn, h, url: p.url(), home: await p.isVisible("#dexBtn") });
+    }
+    check("「戻る」：図鑑・カレンダー・実績・今日の1本からメニューへ戻り、ゲームのページのまま", got.every((g) => g.h.length > 1 && g.url === home0 && g.home), JSON.stringify(got));
+    await p.close();
+  }
+
   try { // 引き継ぎコード（別の端末へ記録を移す。shared-workflows template/qa/transfer-check.mjs）
     await checkTransfer({ browser, url, game: "batsu-doko", sample: { "xdoko-won": "1", "xdoko-best-1": "42.1" }, check });
   } catch (e) { check("引き継ぎコード", false, e.message.split("\n")[0]); }
