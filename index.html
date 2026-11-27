@@ -260,7 +260,7 @@ html.a11y-cvd .lv.hard,html.a11y-cvd .lv.long{border-width:3px}
 </style>
 <!-- 引き継ぎコード（shared-workflows template/transfer.js の写し）。ゲームの script より前に置く -->
 <script src="transfer.js" data-game="batsu-doko" data-keys="xdoko-*"></script>
-<!-- a11y:begin 見やすさの設定 v10（shared-workflows template/a11y/a11y.html の写し。ここでは直さず、ひな形を直して全部のゲームへ写す。drift-check と qa/a11y.mjs が同じ中身か見る） -->
+<!-- a11y:begin 見やすさの設定 v11（shared-workflows template/a11y/a11y.html の写し。ここでは直さず、ひな形を直して全部のゲームへ写す。drift-check と qa/a11y.mjs が同じ中身か見る） -->
 <style id="a11y-css">
 /* だれでも：キーボードで選んだ所に太い枠（WCAG 2.4.7・2.4.13） */
 :is(button,a,input,select,textarea,summary,[tabindex]):focus-visible{outline:3px solid #1a5fd0!important;outline-offset:2px!important;box-shadow:0 0 0 5px #fff!important}
@@ -366,7 +366,7 @@ html.a11y-dark :is(button,a,input,select,textarea,summary,[tabindex]):focus-visi
   const get = (k) => { const c = CH[k]; if (!c) return on(k); const v = S[k]; return c[3].some(([x]) => x === v) ? v : k === "fs" ? oldFs() : c[4]; };
   // 前のゲームごとの文字の大きさ（1〜3）を引き継ぐ。共通の設定をまだ選んでいなければ、その値（無ければゲームの既定の値）を使う
   let fsKey = null, fsDef = 2;
-  const oldFs = () => { if (fsKey) { try { const v = +localStorage.getItem(fsKey); if (v >= 1 && v <= 3) return v; } catch { /* 読めない */ } } return fsDef; };
+  const oldFs = () => { if (fsKey) { try { const v = +localStorage.getItem(fsKey); if (v === 1 || v === 2 || v === 3) return v; } catch { /* 読めない */ } } return fsDef; }; // 1・2・3 だけ（2.5 などは既定の値。v11、kusuri-yomi の QA）
   const fs = () => get("fs");
   // ゲームから一度だけ：A11y.fsFrom("〇〇-fs", 既定の値)。前のキーを覚えて、今の大きさを効かせ、その値を返す
   const fsFrom = (k, d) => { fsKey = k || null; fsDef = d === 1 || d === 3 ? d : 2; applyFs(); return fs(); };
