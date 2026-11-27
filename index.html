@@ -1462,13 +1462,13 @@ const head=p=>`<h3>${p[0]}<br>${p[1]}</h3><p>${p[2]}</p>`;
 const TYPES={
  corner:{name:'すみの×',lv:1,hint:'右上の小さい×。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="x real" style="right:4px;top:2px" aria-label="閉じる">×</button>${head(p)}<button class="big">${p[3]}</button></div>`},
- bigfake:{name:'大きなにせ×',lv:1,hint:'大きい×はボタン。本物は下の小さな文字。',
+ bigfake:{name:'大きなにせ×',lv:1,hint:'大きい×はにせもの。本物は下の小さな「閉じる」。',
   html:p=>`<div class="ad"><span class="tag">広告</span><button class="big fake" style="position:absolute;right:-14px;top:-18px;padding:8px 14px;font-size:22px;margin:0">×</button>${head(p)}<button class="big">${p[3]}</button>
    <button class="x real" style="left:50%;bottom:-2px;transform:translateX(-50%);font-size:9px;opacity:.55" aria-label="閉じる">閉じる</button></div>`},
  outside:{name:'枠の外の×',lv:1,hint:'枠の外にある×。枠の中の ⓘ は広告の説明。',
   html:p=>`<div class="ad" style="margin-top:26px"><button class="x real" style="right:-6px;top:-34px;background:#fff;border-radius:50%;width:28px;height:28px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,.3)" aria-label="閉じる">×</button>
    <button class="x fake" style="right:4px;top:2px;font-size:14px" aria-label="広告について">ⓘ</button><span class="tag">広告</span>${head(p)}<button class="big">${p[3]}</button></div>`},
- label:{name:'「広告」の文字',lv:1,hint:'「広告」の横の小さな文字。',
+ label:{name:'「広告」の文字',lv:1,hint:'「広告」の横の小さな「広告を閉じる」の文字。',
   html:p=>`<div class="ad"><span class="tag real" role="button" tabindex="0" style="cursor:pointer" aria-label="閉じる">広告　広告を閉じる</span><button class="x fake" style="right:4px;top:2px">×</button>${head(p)}<button class="big fake">${p[3]}</button></div>`},
  three:{name:'3つの×',lv:1,hint:'×が3つ。本物は1つだけ。',
   html:p=>{const r=Math.floor(R()*3);const order=[0,1,2].map(i=>i===r?'×':rnd(['✕','Χ','⨉']));
